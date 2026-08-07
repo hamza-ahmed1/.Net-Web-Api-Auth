@@ -1,7 +1,10 @@
 using Auth.Data;
 using Auth.Model.Entities;
 using Auth.Services;
+<<<<<<< HEAD
 using Auth.Services.Interfaces;
+=======
+>>>>>>> 764499a2f591c954136fe271340a6e2d1f7c1df6
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -50,7 +53,10 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+<<<<<<< HEAD
 builder.Services.AddScoped<ITeacherService, TeacherService>();
+=======
+>>>>>>> 764499a2f591c954136fe271340a6e2d1f7c1df6
 
 builder.Services.AddCors(options =>
 {
