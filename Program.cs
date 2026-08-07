@@ -49,8 +49,11 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
 });
 
-builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddScoped<Auth.Services.ITokenService, TokenService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+
 
 builder.Services.AddCors(options =>
 {

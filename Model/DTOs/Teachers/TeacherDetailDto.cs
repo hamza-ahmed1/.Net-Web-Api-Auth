@@ -10,6 +10,8 @@ namespace Auth.Model.DTOs.Teachers
         [Required]
         public string Email { get; set; } = string.Empty;
         [Required]
+        public string Fullname { get; set; } = string.Empty;
+        [Required]
         [StringLength(15)]
         public string CNIC { get; set; } = string.Empty;
 

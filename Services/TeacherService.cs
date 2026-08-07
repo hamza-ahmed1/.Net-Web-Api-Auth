@@ -5,6 +5,7 @@ using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Security.Cryptography;
 
 namespace Auth.Services
@@ -104,11 +105,189 @@ namespace Auth.Services
             }
         }
 
+        public async Task<IActionResult> UpdateTeacherDetails(TeacherDetailDto teacherDto)
+        {
+            
+            var teacher = await _context.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.User.Email == teacherDto.Email);
+
+            if (teacher == null)
+                return new BadRequestObjectResult("Teacher doesn't exist.");
+
+      
+            teacher.Address = teacherDto.Address;
+            teacher.IsActive = teacherDto.IsActive;
+            teacher.CNIC = teacherDto.CNIC;
+            teacher.DateOfBirth = teacherDto.DateOfBirth;
+            teacher.Department = teacherDto.Department;
+            teacher.Salary = teacherDto.Salary;
+            teacher.HireDate = teacherDto.HireDate;
+            teacher.IdentificationNumber = teacherDto.IdentificationNumber;
+            teacher.Qualification = teacherDto.Qualification;
+            teacher.User.FullName = teacherDto.Fullname;
+            
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return new OkObjectResult(new
+                {
+                    Message = "Teacher details updated successfully.",
+                    TeacherId = teacher.User.Id
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update teacher with email {Email}", teacherDto.Email);
+                return new BadRequestObjectResult("Failed to update teacher details. Please try again.");
+            }
+        }
+
+        public async Task<IActionResult> DeleteTeacher(Guid teacherId)
+        {
+            // Find teacher
+            var teacher = await _context.Teachers
+                .FirstOrDefaultAsync(t => t.Teacher_Id == teacherId);
+
+            if (teacher == null)
+            {
+                return new BadRequestObjectResult("Teacher Not Found");
+            }
+
+            // Find associated Identity user
+            var user = await _userManager.FindByIdAsync(teacher.UserId);
+
+            if (user == null)
+            {
+                return new BadRequestObjectResult("Associated user not found");
+            }
+
+            // Mark teacher as inactive
+            teacher.IsActive = false;
+
+            // Disable Identity login
+            user.LockoutEnabled = true;
+            user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+
+            // remove teacher role
+            await _userManager.RemoveFromRoleAsync(user, "Teacher");
+
+            await _context.SaveChangesAsync();
+
+            return new OkObjectResult(new
+            {
+                message = "Teacher has been deactivated successfully."
+            });
+        }
+
+        public async Task<Teacher> GetTeacherByID(Guid teacher_id)
+        {
+            return await _context.Teachers.Include(t => t.User).FirstOrDefaultAsync(t => t.Teacher_Id == teacher_id);
+         
+
+       
+        }
+
+        // restore teacher
+        public async Task<bool> RestoreTeacher(Guid teacherId)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.Teacher_Id == teacherId);
+
+            if (teacher == null)
+            {
+                return false;
+            }
+
+            teacher.IsActive = true;
+            teacher.User.LockoutEnabled = true;
+            teacher.User.LockoutEnd = null;
+
+            if (!await _userManager.IsInRoleAsync(teacher.User, "Teacher"))
+            {
+                var result = await _userManager.AddToRoleAsync(
+                    teacher.User,
+                    "Teacher"
+                );
+
+                if (!result.Succeeded)
+                {
+                    return false;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<IActionResult> PromoteToHOD(Guid teacherId)
+        {
+            var teacher = await _context.Teachers
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.Teacher_Id == teacherId);
+            if (teacher == null)
+            {
+                return new BadRequestObjectResult("Teacher not found.");
+            }
+            // Check if the user is already an HOD
+            if (await _userManager.IsInRoleAsync(teacher.User, "HOD"))
+            {
+                return new BadRequestObjectResult("Teacher is already an HOD.");
+            }
+            // Remove Teacher role and add HOD role
+            var removeResult = await _userManager.RemoveFromRoleAsync(teacher.User, "Teacher");
+            if (!removeResult.Succeeded)
+            {
+                return new BadRequestObjectResult("Failed to remove Teacher role.");
+            }
+            var addResult = await _userManager.AddToRoleAsync(teacher.User, "HOD");
+            if (!addResult.Succeeded)
+            {
+                // Rollback: Add Teacher role back
+                await _userManager.AddToRoleAsync(teacher.User, "Teacher");
+                return new BadRequestObjectResult("Failed to promote to HOD.");
+            }
+            return new OkObjectResult(new
+            {
+                message = "Teacher promoted to HOD successfully."
+            });
+        }
+        public async Task<IActionResult> DemoteToTeacher(Guid teacherId)
+        {
+            var teacher = await _context.Teachers.Include(t => t.User).FirstOrDefaultAsync(t => t.Teacher_Id == teacherId);
+            // check if already a teacher
+            if(await _userManager.IsInRoleAsync(teacher.User,"Teacher"))
+            {
+                return new BadRequestObjectResult("Already a teacher");
+            }
+            // remove HOD role:
+            var issucceded = await _userManager.RemoveFromRoleAsync(teacher.User, "HOD");
+            if(!issucceded.Succeeded)
+            {
+                return new BadRequestObjectResult("unable to change");
+            }
+            else
+            {
+                await _userManager.AddToRoleAsync(teacher.User, "Teacher");
+                return new OkObjectResult("Role has been updated to Teacher");
+            }
+
+            
+
+             
+
+        }
         private static string GenerateTemporaryPassword()
         {
             var randomPart = Convert.ToBase64String(RandomNumberGenerator.GetBytes(6))
                 .Replace("+", "").Replace("/", "").Replace("=", "");
             return "Password@123";
         }
+
+
+        
     }
 }

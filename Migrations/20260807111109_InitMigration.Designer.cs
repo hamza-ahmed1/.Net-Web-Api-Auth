@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260806115815_TeacherEntityAdded1")]
-    partial class TeacherEntityAdded1
+    [Migration("20260807111109_InitMigration")]
+    partial class InitMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -258,11 +258,9 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Teacher", b =>
                 {
-                    b.Property<int>("Teacher_Id")
+                    b.Property<Guid>("Teacher_Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Teacher_Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Address")
                         .IsRequired()

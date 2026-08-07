@@ -1,4 +1,5 @@
 ﻿using Auth.Model.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 namespace Auth.Data
@@ -16,6 +17,33 @@ namespace Auth.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+            builder.Entity<IdentityRole>().HasData(
+        new IdentityRole
+        {
+            Name = "Admin",
+            NormalizedName = "ADMIN",
+        },
+        new IdentityRole
+        {
+            Name = "Teacher",
+            NormalizedName = "TEACHER",
+        },
+        new IdentityRole
+        {
+            Name = "Student",
+            NormalizedName = "STUDENT",
+        },
+        new IdentityRole
+        {
+            Name = "HOD",
+            NormalizedName = "HOD",
+        },
+        new IdentityRole
+        {
+            Name = "CourseCoordinator",
+            NormalizedName = "COURSECOORDINATOR",
+        }
+    );
 
 
         }

@@ -2,7 +2,7 @@
 using Auth.Model.DTOs;
 using Auth.Model.DTOs.AuthApi.Models.Dtos;
 using Auth.Model.Entities;
-using Auth.Services.Interfaces;
+using Auth.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,19 +15,30 @@ namespace Auth.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly ApplicationDbContext _db;
 
-        public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService, ApplicationDbContext db)
+        public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService, ApplicationDbContext db, SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _db = db;
+            _signInManager = signInManager;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
+            var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+
+            if (existingUser != null)
+            {
+                return BadRequest(new
+                {
+                    message = "Email is already registered."
+                });
+            }
             var user = new ApplicationUser { UserName = dto.Email, Email = dto.Email, FullName = dto.FullName };
             var result = await _userManager.CreateAsync(user, dto.Password);
 
@@ -42,8 +53,21 @@ namespace Auth.Controllers
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
+            if (user == null)
+            {
                 return Unauthorized(new { message = "Invalid credentials" });
+            }
+
+            var result = await _signInManager.CheckPasswordSignInAsync(
+                user,
+                dto.Password,
+                lockoutOnFailure: true
+            );
+
+            if (!result.Succeeded)
+            {
+                return Unauthorized(new { message = "Invalid credentials" });
+            }
 
             var accessToken = await _tokenService.GenerateAccessToken(user, _userManager);
             var refreshToken = _tokenService.GenerateRefreshToken();

@@ -145,6 +145,38 @@ namespace Auth.Migrations
                         .HasFilter("[NormalizedName] IS NOT NULL");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "65bd0c9d-b400-448a-b6b0-db2570ac8c20",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        },
+                        new
+                        {
+                            Id = "f0b31bb8-e286-4e7e-986d-8517344626d2",
+                            Name = "Teacher",
+                            NormalizedName = "TEACHER"
+                        },
+                        new
+                        {
+                            Id = "2cb74073-4e7c-4bcf-b471-331659105123",
+                            Name = "Student",
+                            NormalizedName = "STUDENT"
+                        },
+                        new
+                        {
+                            Id = "ec2cb1f5-9a09-440f-8aa6-301e33ddae6b",
+                            Name = "HOD",
+                            NormalizedName = "HOD"
+                        },
+                        new
+                        {
+                            Id = "79e3e49c-aaa7-4902-959f-e3225027eba2",
+                            Name = "CourseCoordinator",
+                            NormalizedName = "COURSECOORDINATOR"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -255,11 +287,9 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Teacher", b =>
                 {
-                    b.Property<int>("Teacher_Id")
+                    b.Property<Guid>("Teacher_Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Teacher_Id"));
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Address")
                         .IsRequired()

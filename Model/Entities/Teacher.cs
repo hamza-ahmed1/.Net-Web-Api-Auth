@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 public class Teacher
 {
     [Key]
-    public int Teacher_Id { get; set; }
+    public Guid Teacher_Id { get; set; }
 
     [Required]
     [StringLength(15)]
