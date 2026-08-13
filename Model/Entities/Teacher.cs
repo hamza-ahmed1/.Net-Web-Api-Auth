@@ -45,4 +45,9 @@ public class Teacher
 
     [ForeignKey(nameof(UserId))]
     public ApplicationUser User { get; set; } = null!;
+
+
+    //    // Navigation properties
+    public ICollection<TeacherSectionCourse> TeacherAssignments { get; set; }
+        = new List<TeacherSectionCourse>();
 }

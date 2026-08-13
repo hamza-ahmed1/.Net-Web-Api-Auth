@@ -1,0 +1,11 @@
+﻿Admin:
+-- Login
+http://localhost:5000/api/auth/login
+
+: payload
+
+{
+    "Email": "khumza677@gmail.com",
+    "Password": "Test@1234"
+}
+

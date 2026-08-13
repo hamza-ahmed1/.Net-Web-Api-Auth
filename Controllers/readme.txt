@@ -64,3 +64,8 @@ Controllers/
 │   └── LookupController.cs
 │
 └── HealthController.cs
+
+
+
+docker build -t hamzakhankhan/auth-api:v1 .
+docker push hamzakhankhan/auth-api:v1

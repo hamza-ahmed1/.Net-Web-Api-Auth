@@ -14,9 +14,41 @@ namespace Auth.Data
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
 
+        public DbSet<Course> Courses { get; set; }
+        
+        public DbSet<TeacherSectionCourse> TeacherSectionCourses { get; set; }
+
+        public DbSet<Section> Sections { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<TeacherSectionCourse>()
+                .HasOne(ts => ts.Teacher)
+                .WithMany(t => t.TeacherAssignments)
+                .HasForeignKey(ts => ts.TeacherId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+
+            builder.Entity<TeacherSectionCourse>()
+                .HasOne(ts => ts.Section)
+                .WithMany(s => s.TeacherAssignments)
+                .HasForeignKey(ts => ts.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TeacherSectionCourse>()
+                .HasOne(ts => ts.Course)
+                .WithMany(c => c.TeacherAssignments)
+                .HasForeignKey(ts => ts.CourseId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<TeacherSectionCourse>()
+                .HasIndex(ts => new { ts.TeacherId, ts.SectionId, ts.CourseId })
+                .IsUnique();
+
+
             builder.Entity<IdentityRole>().HasData(
         new IdentityRole
         {
