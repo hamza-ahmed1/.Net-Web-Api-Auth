@@ -53,6 +53,9 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<Auth.Services.ITokenService, TokenService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+
 
 
 builder.Services.AddCors(options =>
@@ -72,4 +75,9 @@ app.UseCors("SpaPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
 app.Run();
