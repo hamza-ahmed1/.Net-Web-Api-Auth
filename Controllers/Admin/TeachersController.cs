@@ -17,7 +17,7 @@ namespace Auth.Controllers.Admin
         }
 
 
-        [HttpPost("create")]
+        [HttpPost]
 
         public async Task<IActionResult> CreateTeacher(CreateTeacherDto Dto)
         {
@@ -25,7 +25,7 @@ namespace Auth.Controllers.Admin
         }
 
 
-        [HttpPost("edit")]
+        [HttpPut]
 
         public async Task<IActionResult> UpdateTeacher(TeacherDetailDto Dto)
         {
