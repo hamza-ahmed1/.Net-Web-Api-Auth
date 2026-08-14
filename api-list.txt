@@ -1,11 +1,215 @@
-﻿Admin:
--- Login
-http://localhost:5000/api/auth/login
+﻿API List (exclude WeatherForecastController)
 
-: payload
+Base URL placeholder: {BASE_URL} (e.g. https://localhost:7179)
 
-{
-    "Email": "khumza677@gmail.com",
-    "Password": "Test@1234"
-}
+1) AuthController (Route: /api/auth)
 
+- POST {BASE_URL}/api/auth/register
+  - Description: Register a new user (default role: Student)
+  - Sample request body (RegisterDto):
+    {
+      "Email": "user@example.com",
+      "Password": "P@ssw0rd!",
+      "FullName": "User Name"
+    }
+  - Sample response (201 or 200):
+    { "message": "Registered successfully" }
+
+- POST {BASE_URL}/api/auth/login
+  - Description: Authenticate user and set refresh token cookie
+  - Sample request body (LoginDto):
+    {
+      "Email": "user@example.com",
+      "Password": "P@ssw0rd!"
+    }
+  - Sample response (200 - AuthResponseDto):
+    {
+      "AccessToken": "eyJ...",
+      "AccessTokenExpiresAt": "2026-08-14T12:34:56Z",
+      "User": {
+        "Id": "guid",
+        "FullName": "User Name",
+        "Email": "user@example.com",
+        "Roles": [ "Student" ]
+      }
+    }
+
+- POST {BASE_URL}/api/auth/refresh
+  - Description: Read refresh token from cookie, return a new access token
+  - Sample request: No body (cookie "refreshToken" required)
+  - Sample response:
+    {
+      "AccessToken": "new.jwt.token"
+    }
+
+- POST {BASE_URL}/api/auth/logout
+  - Description: Revoke refresh token and delete cookie (requires Authorization)
+  - Sample request: No body (Authorization header + cookie)
+  - Sample response:
+    { "message": "Logged out" }
+
+2) RoleController (Route: /api/roles)
+
+- GET {BASE_URL}/api/roles
+  - Description: Get all roles
+  - Sample response:
+    [ "Admin", "Teacher", "Student", "HOD" ]
+
+- POST {BASE_URL}/api/roles
+  - Description: Create a role. Controller binds a raw string from body.
+  - Sample request body (raw JSON string):
+    "Teacher"
+  - Alternate (if your client sends object):
+    { "role": "Teacher" }  // service may accept this depending on implementation
+  - Sample response:
+    { "message": "Role created" }
+
+3) TeachersController (Route: /api/admin/teachers)
+
+- POST {BASE_URL}/api/admin/teachers
+  - Description: Create/register a teacher
+  - Sample request body (CreateTeacherDto):
+    {
+      "Fullname": "Jane Smith",
+      "Email": "jane.smith@example.com",
+      "Department": "Mathematics",
+      "Salary": 50000,
+      "CNIC": "11111-1111111-1",
+      "DateOfBirth": "1980-01-01",
+      "HireDate": "2020-09-01"
+    }
+  - Sample response:
+    { "message": "Teacher registered", "teacherId": "guid" }
+
+- PUT {BASE_URL}/api/admin/teachers
+  - Description: Update teacher details (TeacherDetailDto)
+  - Sample request body (TeacherDetailDto):
+    {
+      "Fullname": "Jane Smith",
+      "Email": "jane.smith@example.com",
+      "Address": "123 Main St",
+      "Department": "Mathematics",
+      "Salary": 52000,
+      "CNIC": "11111-1111111-1",
+      "DateOfBirth": "1980-01-01",
+      "HireDate": "2020-09-01",
+      "IdentificationNumber": "ID123",
+      "Qualification": "MSc"
+    }
+  - Sample response:
+    { "message": "Updated" }
+
+- GET {BASE_URL}/api/admin/teachers/{teacherId}
+  - Description: Get teacher details
+  - Sample response (TeacherDetailDto):
+    {
+      "Address": "123 Main St",
+      "Fullname": "Jane Smith",
+      "IsActive": true,
+      "CNIC": "11111-1111111-1",
+      "DateOfBirth": "1980-01-01T00:00:00",
+      "Department": "Mathematics",
+      "Salary": 52000,
+      "Email": "jane.smith@example.com",
+      "HireDate": "2020-09-01T00:00:00",
+      "IdentificationNumber": "ID123",
+      "Qualification": "MSc"
+    }
+
+- DELETE {BASE_URL}/api/admin/teachers/{teacherId}
+  - Description: Soft-delete or delete teacher
+  - Sample response:
+    { "message": "Deleted" }
+
+- POST {BASE_URL}/api/admin/teachers/restore/{teacherId}
+  - Description: Restore a previously deleted teacher
+  - Sample response:
+    { "message": "Restored", "teacherId": "guid" }
+
+- POST {BASE_URL}/api/admin/teachers/promotion/{teacherId}
+  - Description: Promote teacher to HOD
+  - Sample response:
+    { "message": "Promoted to HOD" }
+
+- POST {BASE_URL}/api/admin/teachers/demotion/{teacherId}
+  - Description: Demote HOD to teacher
+  - Sample response:
+    { "message": "Demoted to Teacher" }
+
+4) CourseController (Route: /api/courses)
+
+- POST {BASE_URL}/api/courses
+  - Description: Create a course (CreateCourseDto)
+  - Sample request body:
+    {
+      "Name": "Intro to Programming",
+      "Code": "CS101",
+      "Credits": 3,
+      "Description": "Basic programming course"
+    }
+  - Sample response (201 Created):
+    {
+      "CourseId": "guid",
+      "Name": "Intro to Programming",
+      "Code": "CS101",
+      "Credits": 3,
+      "Description": "Basic programming course"
+    }
+
+- GET {BASE_URL}/api/courses
+  - Description: Get all courses
+  - Sample response:
+    [ { "CourseId": "guid", "Name": "CS101" }, { "CourseId": "guid2", "Name": "CS102" } ]
+
+- GET {BASE_URL}/api/courses/{id}
+  - Description: Get course by id
+  - Sample response:
+    { "CourseId": "guid", "Name": "CS101", "Code": "CS101", "Credits": 3 }
+
+- PUT {BASE_URL}/api/courses/{id}
+  - Description: Update course (body same as CreateCourseDto)
+  - Sample response:
+    { "CourseId": "guid", "Name": "CS101 - Updated" }
+
+- DELETE {BASE_URL}/api/courses/{id}
+  - Description: Delete course
+  - Sample response:
+    { "message": "Course deleted successfully." }
+
+5) SectionController (Route: /api/sections)
+
+- POST {BASE_URL}/api/sections
+  - Description: Create a section (CreateSectionDTO)
+  - Sample request body:
+    {
+      "Name": "Section A",
+      "CourseId": "course-guid",
+      "Capacity": 30
+    }
+  - Sample response:
+    { "message": "Created", "sectionId": "guid" }
+
+- GET {BASE_URL}/api/sections
+  - Description: Get all sections
+  - Sample response:
+    [ { "Id": "guid", "Name": "Section A" } ]
+
+- GET {BASE_URL}/api/sections/{Id}
+  - Description: Get section by id
+  - Sample response:
+    { "Id": "guid", "Name": "Section A", "CourseId": "course-guid" }
+
+- PUT {BASE_URL}/api/sections/{Id}
+  - Description: Update section (CreateSectionDTO)
+  - Sample response:
+    { "message": "Updated" }
+
+- DELETE {BASE_URL}/api/sections/{Id}
+  - Description: Delete section
+  - Sample response:
+    { "message": "Deleted" }
+
+Notes / Tips for frontend developers:
+- Use Authorization: Bearer {accessToken} header for endpoints that require [Authorize].
+- Refresh token is set as an HttpOnly cookie named "refreshToken" by the login endpoint; call POST /api/auth/refresh to get a new access token.
+- Replace {BASE_URL} with your running API URL and ports.
