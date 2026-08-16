@@ -78,6 +78,32 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
+        .CreateLogger("Migration");
+
+    // Try to apply pending EF Core migrations with a retry loop so the container
+    // can start even if the database isn't immediately available when the
+    // API container launches (common in docker-compose environments).
+    const int maxAttempts = 12;
+    const int delaySeconds = 5;
+    for (int attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            db.Database.Migrate();
+            logger.LogInformation("Database migration applied successfully.");
+            break;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Database migration attempt {Attempt}/{Max} failed.", attempt, maxAttempts);
+            if (attempt == maxAttempts)
+            {
+                logger.LogError(ex, "Max migration attempts reached, rethrowing.");
+                throw;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+        }
+    }
 }
 app.Run();
