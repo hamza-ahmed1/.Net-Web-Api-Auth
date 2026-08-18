@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +56,10 @@ builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<ITeacherSectionCourseService, TeacherSectionCourseService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+//builder.Services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
 
 
@@ -67,7 +72,13 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+
+        o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        o.JsonSerializerOptions.MaxDepth = 64;
+    });
 
 var app = builder.Build();
 
@@ -104,6 +115,63 @@ using (var scope = app.Services.CreateScope())
             }
             await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
         }
+    }
+    // Seed default data (roles, admin user)
+    try
+    {
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        const string adminRole = "Admin";
+        const string adminUserName = "lms.admin.com";
+        const string adminPassword = "Admin@1234";
+
+        if (!await roleManager.RoleExistsAsync(adminRole))
+        {
+            var r = new IdentityRole(adminRole);
+            var rr = await roleManager.CreateAsync(r);
+            if (rr.Succeeded)
+                logger.LogInformation("Created role '{Role}'", adminRole);
+            else
+                logger.LogWarning("Failed creating role '{Role}': {Errors}", adminRole, string.Join(';', rr.Errors.Select(e => e.Description)));
+        }
+
+        var existing = await userManager.FindByNameAsync(adminUserName);
+        if (existing == null)
+        {
+            var admin = new ApplicationUser
+            {
+                UserName = adminUserName,
+                Email = adminUserName,
+                EmailConfirmed = true,
+                FullName = "Administrator"
+            };
+
+            var result = await userManager.CreateAsync(admin, adminPassword);
+            if (result.Succeeded)
+            {
+                logger.LogInformation("Created admin user '{UserName}'", adminUserName);
+                await userManager.AddToRoleAsync(admin, adminRole);
+                logger.LogInformation("Assigned '{UserName}' to role '{Role}'", adminUserName, adminRole);
+            }
+            else
+            {
+                logger.LogWarning("Failed creating admin user '{UserName}': {Errors}", adminUserName, string.Join(';', result.Errors.Select(e => e.Description)));
+            }
+        }
+        else
+        {
+            // Ensure admin is in role
+            if (!await userManager.IsInRoleAsync(existing, adminRole))
+            {
+                await userManager.AddToRoleAsync(existing, adminRole);
+                logger.LogInformation("Added existing user '{UserName}' to role '{Role}'", adminUserName, adminRole);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while seeding default data.");
     }
 }
 app.Run();

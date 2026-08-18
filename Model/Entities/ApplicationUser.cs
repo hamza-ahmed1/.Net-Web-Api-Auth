@@ -8,5 +8,7 @@ namespace Auth.Model.Entities
         public ICollection<RefreshToken>? RefreshTokens { get; set; }
 
         public ICollection<Teacher>? Teachers { get; set; }
+        public Student? Student { get; set; }
+
     }
 }

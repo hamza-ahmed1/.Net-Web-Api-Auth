@@ -4,6 +4,7 @@ using Auth.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260818061404_StudentEnrollmentsAdded")]
+    partial class StudentEnrollmentsAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -89,48 +92,6 @@ namespace Auth.Migrations
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
                     b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("Auth.Model.Entities.Attendance", b =>
-                {
-                    b.Property<Guid>("AttendanceId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("AttendanceDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid?>("MarkedByTeacherId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Remarks")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("StudentEnrollmentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TeacherSectionCourseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("AttendanceId");
-
-                    b.HasIndex("MarkedByTeacherId");
-
-                    b.HasIndex("TeacherSectionCourseId");
-
-                    b.HasIndex("StudentEnrollmentId", "TeacherSectionCourseId", "AttendanceDate")
-                        .IsUnique();
-
-                    b.ToTable("Attendances");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.Course", b =>
@@ -221,10 +182,6 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CNIC")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
@@ -255,10 +212,10 @@ namespace Auth.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<Guid>("SectionId")
+                    b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("StudentId")
+                    b.Property<Guid>("TeacherSectionCourseId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("WithdrawnDate")
@@ -266,9 +223,9 @@ namespace Auth.Migrations
 
                     b.HasKey("StudentEnrollmentId");
 
-                    b.HasIndex("SectionId");
+                    b.HasIndex("TeacherSectionCourseId");
 
-                    b.HasIndex("StudentId", "StudentEnrollmentId")
+                    b.HasIndex("StudentId", "TeacherSectionCourseId")
                         .IsUnique();
 
                     b.ToTable("StudentEnrollments");
@@ -339,31 +296,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "e0797b13-092f-486a-9295-29c0045bb7fa",
+                            Id = "5b4ca498-36c7-48af-ac81-e9c121901414",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "792cd491-bfc1-4cb6-b7bb-2c2492b7ddeb",
+                            Id = "6e351b83-3df3-4383-b0ac-e9bc2be33198",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "bd1f72f9-bd7e-4bc9-8534-5106e139c05e",
+                            Id = "d4c55d3b-a516-46a5-a27e-f4f8f83774b4",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "1235745d-12ab-42d9-bef9-3a9b4ef5c9e0",
+                            Id = "7d34a400-5bb6-4946-af9e-6527f1726864",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "d2c817f3-ce65-4919-ade5-7316f488cdd7",
+                            Id = "5b94f4da-ab3b-4f66-a481-1d4dde414898",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -529,31 +486,6 @@ namespace Auth.Migrations
                     b.ToTable("Teachers");
                 });
 
-            modelBuilder.Entity("Auth.Model.Entities.Attendance", b =>
-                {
-                    b.HasOne("Teacher", "MarkedByTeacher")
-                        .WithMany()
-                        .HasForeignKey("MarkedByTeacherId");
-
-                    b.HasOne("Auth.Model.Entities.StudentEnrollments", "StudentEnrollment")
-                        .WithMany()
-                        .HasForeignKey("StudentEnrollmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Auth.Model.Entities.TeacherSectionCourse", "TeacherSectionCourse")
-                        .WithMany()
-                        .HasForeignKey("TeacherSectionCourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MarkedByTeacher");
-
-                    b.Navigation("StudentEnrollment");
-
-                    b.Navigation("TeacherSectionCourse");
-                });
-
             modelBuilder.Entity("Auth.Model.Entities.RefreshToken", b =>
                 {
                     b.HasOne("Auth.Model.Entities.ApplicationUser", "User")
@@ -578,21 +510,21 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.StudentEnrollments", b =>
                 {
-                    b.HasOne("Auth.Model.Entities.Section", "EnrolledSection")
-                        .WithMany()
-                        .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Auth.Model.Entities.Student", "Student")
                         .WithMany("StudentEnrollments")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("EnrolledSection");
+                    b.HasOne("Auth.Model.Entities.TeacherSectionCourse", "TeacherSectionCourse")
+                        .WithMany()
+                        .HasForeignKey("TeacherSectionCourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Student");
+
+                    b.Navigation("TeacherSectionCourse");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.TeacherSectionCourse", b =>

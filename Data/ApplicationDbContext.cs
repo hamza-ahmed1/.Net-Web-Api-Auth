@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 namespace Auth.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
@@ -19,6 +20,13 @@ namespace Auth.Data
         public DbSet<TeacherSectionCourse> TeacherSectionCourses { get; set; }
 
         public DbSet<Section> Sections { get; set; }
+
+        public DbSet<Student> Students { get; set; }
+
+        public DbSet<StudentEnrollments> StudentEnrollments { get; set; }
+
+        public DbSet<Attendance> Attendances { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -47,7 +55,15 @@ namespace Auth.Data
             builder.Entity<TeacherSectionCourse>()
                 .HasIndex(ts => new { ts.TeacherId, ts.SectionId, ts.CourseId })
                 .IsUnique();
+            // one student cant assign to same course in same section with same teacher
+            builder.Entity<StudentEnrollments>()
+       .HasIndex(se => new { se.StudentId, se.StudentEnrollmentId })
+       .IsUnique();
 
+
+            builder.Entity<Attendance>()
+    .HasIndex(a => new { a.StudentEnrollmentId, a.TeacherSectionCourseId, a.AttendanceDate })
+    .IsUnique();
 
             builder.Entity<IdentityRole>().HasData(
         new IdentityRole
