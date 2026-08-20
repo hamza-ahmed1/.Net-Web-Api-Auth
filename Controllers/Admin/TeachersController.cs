@@ -115,5 +115,11 @@ namespace Auth.Controllers.Admin
             }
         }
 
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportTeachers()
+        {
+            return await _teacherService.ExportTeachers();
+        }
+
     }
 }

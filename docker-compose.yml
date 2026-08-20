@@ -2,18 +2,19 @@ services:
   api:
     image: hamzakhankhan/auth-api:v1
     build:
-      context: .
+      context: ../Auth
       dockerfile: Dockerfile
     ports:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=db;Database=${DB_NAME};User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=${DB_NAME};User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=${JWT_ISSUER}
       - Jwt__Audience=${JWT_AUDIENCE}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   db:
@@ -30,7 +31,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 30s
 
 volumes:
   db_data:

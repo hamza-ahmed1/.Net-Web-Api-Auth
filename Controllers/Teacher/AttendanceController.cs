@@ -4,7 +4,7 @@ using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace Auth.Controllers
+namespace Auth.Controllers.Teacher
 {
     [ApiController]
     [Route("api/[controller]")]

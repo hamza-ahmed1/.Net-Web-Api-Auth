@@ -2,10 +2,10 @@
 using Auth.Model.DTOs.Teachers;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
 using System.Security.Cryptography;
 
 namespace Auth.Services
@@ -288,6 +288,77 @@ namespace Auth.Services
         }
 
 
-        
+        // export teacher
+        public async Task<IActionResult> ExportTeachers()
+        {
+            var teacherDetails = await _context
+                .Teachers
+                .Include(t => t.User)
+                .Include(t => t.TeacherAssignments)
+                    .ThenInclude(ta => ta.Section)
+                .Include(t => t.TeacherAssignments)
+                    .ThenInclude(ta => ta.Course)
+                .ToListAsync();
+
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Teacherdetails");
+
+            // Headers
+            worksheet.Cell(1, 1).Value = "Identification Number";
+            worksheet.Cell(1, 2).Value = "FullName";
+            worksheet.Cell(1, 3).Value = "Email";
+            worksheet.Cell(1, 4).Value = "Department";
+            worksheet.Cell(1, 5).Value = "CNIC";
+            worksheet.Cell(1, 6).Value = "Address";
+            worksheet.Cell(1, 7).Value = "Courses";
+            worksheet.Cell(1, 8).Value = "Sections";
+
+
+            // Data - one row per teacher
+            for (int i = 0; i < teacherDetails.Count; i++)
+            {
+                var teacher = teacherDetails[i];
+                var row = i + 2;
+
+                var sections = teacher.TeacherAssignments != null
+                    ? string.Join(", ", teacher.TeacherAssignments
+                        .Where(a => a.Section != null)
+                        .Select(a => a.Section.SectionName))
+                    : string.Empty;
+
+                var courses = teacher.TeacherAssignments != null
+                    ? string.Join(", ", teacher.TeacherAssignments
+                        .Where(a => a.Course != null)
+                        .Select(a => a.Course.CourseName))
+                    : string.Empty;
+
+                worksheet.Cell(row, 1).Value = teacher.IdentificationNumber;
+                worksheet.Cell(row, 2).Value = teacher.User.FullName;
+                worksheet.Cell(row, 3).Value = teacher.User.Email;
+                worksheet.Cell(row, 4).Value = teacher.Department;
+                worksheet.Cell(row, 5).Value = teacher.CNIC;
+                worksheet.Cell(row, 6).Value = teacher.Address;
+                worksheet.Cell(row, 7).Value = sections;
+                worksheet.Cell(row, 8).Value = courses;
+            }
+            // Format headers
+            worksheet.Row(1).Style.Font.Bold = true;
+
+            worksheet.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            stream.Position = 0;
+            var content = stream.ToArray();
+            var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            var fileName = "TeacherList.xlsx";
+
+            return new Microsoft.AspNetCore.Mvc.FileContentResult(content, contentType)
+            {
+                FileDownloadName = fileName
+            };
+        }
+
+
     }
 }

@@ -10,5 +10,7 @@ namespace Auth.Services.Interfaces
         Task<StudentDto?> GetStudentById(Guid studentId);
         Task<IActionResult> UpdateStudent(Guid studentId, StudentUpdateDto studentDto);
         Task<IActionResult> DeleteStudent(Guid studentId);
+        Task<IActionResult> ExportStudentsToExcel();
+
     }
 }

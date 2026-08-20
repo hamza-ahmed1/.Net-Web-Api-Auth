@@ -15,5 +15,8 @@ namespace Auth.Services.Interfaces
         public Task<IActionResult> PromoteToHOD(Guid teacherId);
         public Task<IActionResult> DemoteToTeacher(Guid teacherId);
 
+        public Task<IActionResult> ExportTeachers();
+
+
     }
 }

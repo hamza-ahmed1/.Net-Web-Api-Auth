@@ -2,9 +2,11 @@
 using Auth.Model.DTOs.Student;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ClosedXML.Excel;
 
 namespace Auth.Services
 {
@@ -31,76 +33,86 @@ namespace Auth.Services
             if (exists != null)
                 return new ConflictObjectResult("Student with this email already exists.");
 
-            // Validate the section exists BEFORE creating the Identity user,
-            // so we don't create an orphaned user if this fails.
             var sectionExists = await _context.Sections.AnyAsync(s => s.SectionId == studentCreateDto.SectionId);
             if (!sectionExists)
                 return new BadRequestObjectResult("Section does not exist.");
 
-            var applicationUser = new ApplicationUser
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync<IActionResult>(async () =>
             {
-                UserName = studentCreateDto.Email,
-                Email = studentCreateDto.Email,
-                PhoneNumber = studentCreateDto.PhoneNumber,
-                FullName = studentCreateDto.FullName
-            };
+                using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Create the Identity user FIRST — must succeed before it can be assigned a role
-            var result = await _userManager.CreateAsync(applicationUser, "DefaultPassword123!");
-            if (!result.Succeeded)
-            {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                return new BadRequestObjectResult(errors);
-            }
+                try
+                {
+                    var applicationUser = new ApplicationUser
+                    {
+                        UserName = studentCreateDto.Email,
+                        Email = studentCreateDto.Email,
+                        PhoneNumber = studentCreateDto.PhoneNumber,
+                        FullName = studentCreateDto.FullName
+                    };
 
-            // Now assign the role, since applicationUser has a valid Id
-            var roleResult = await _userManager.AddToRoleAsync(applicationUser, "Student");
-            if (!roleResult.Succeeded)
-            {
-                var errors = roleResult.Errors.Select(e => e.Description).ToList();
-                // Roll back the created user so we don't leave an orphaned account
-                await _userManager.DeleteAsync(applicationUser);
-                return new BadRequestObjectResult(errors);
-            }
+                    var result = await _userManager.CreateAsync(applicationUser, "DefaultPassword123!");
+                    if (!result.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        var errors = result.Errors.Select(e => e.Description).ToList();
+                        return new BadRequestObjectResult(errors);
+                    }
 
-            var student = new Student
-            {
-                UserId = applicationUser.Id,
-                DateOfBirth = studentCreateDto.DateOfBirth,
-                EnrollmentDate = studentCreateDto.EnrollmentDate,
-                CNIC = studentCreateDto.CNIC
-            };
+                    var roleResult = await _userManager.AddToRoleAsync(applicationUser, "Student");
+                    if (!roleResult.Succeeded)
+                    {
+                        await transaction.RollbackAsync();
+                        var errors = roleResult.Errors.Select(e => e.Description).ToList();
+                        return new BadRequestObjectResult(errors);
+                    }
 
-            // Add student FIRST — this is what triggers EF Core's client-side
-            // Guid generator to populate student.StudentId. Reading it before
-            // this call gives you Guid.Empty, which is what caused the FK error.
-            _context.Students.Add(student);
+                    var student = new Student
+                    {
+                        UserId = applicationUser.Id,
+                        DateOfBirth = studentCreateDto.DateOfBirth,
+                        EnrollmentDate = studentCreateDto.EnrollmentDate,
+                        CNIC = studentCreateDto.CNIC
+                    };
 
-            var enrollment = new StudentEnrollments
-            {
-                StudentId = student.StudentId,   // now correctly populated
-                SectionId = studentCreateDto.sectionId,
-                IsActive = true,
-                EnrolledDate = DateTime.UtcNow
-            };
-            _context.StudentEnrollments.Add(enrollment);
+                    _context.Students.Add(student);
 
-            await _context.SaveChangesAsync();
+                    var enrollment = new StudentEnrollments
+                    {
+                        StudentId = student.StudentId,
+                        SectionId = studentCreateDto.SectionId,
+                        IsActive = true,
+                        EnrolledDate = DateTime.UtcNow
+                    };
+                    _context.StudentEnrollments.Add(enrollment);
 
-            var studentDto = new StudentDto
-            {
-                StudentId = student.StudentId,
-                UserId = applicationUser.Id,
-                FullName = applicationUser.FullName,
-                Email = applicationUser.Email,
-                PhoneNumber = applicationUser.PhoneNumber,
-                DateOfBirth = student.DateOfBirth,
-                EnrollmentDate = student.EnrollmentDate,
-                CNIC = student.CNIC,
-            };
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
 
-            return new OkObjectResult(studentDto);
+                    var studentDto = new StudentDto
+                    {
+                        StudentId = student.StudentId,
+                        UserId = applicationUser.Id,
+                        FullName = applicationUser.FullName,
+                        Email = applicationUser.Email,
+                        PhoneNumber = applicationUser.PhoneNumber,
+                        DateOfBirth = student.DateOfBirth,
+                        EnrollmentDate = student.EnrollmentDate,
+                        CNIC = student.CNIC,
+                    };
+
+                    return new OkObjectResult(studentDto);
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
+
         public async Task<List<StudentDto>> GetAllStudents()
         {
             return await _context.Students
@@ -149,37 +161,124 @@ namespace Auth.Services
             if (student == null)
                 return new NotFoundObjectResult("Student not found.");
 
-            // Update Student fields
             student.DateOfBirth = dto.DateOfBirth;
             student.EnrollmentDate = dto.EnrollmentDate;
             student.CNIC = dto.CNIC;
-            student.User.FullName = dto.FullName;
-            student.User.Email = dto.Email;
-            student.User.PhoneNumber = dto.PhoneNumber;
 
+            if (student.User != null)
+            {
+                student.User.FullName = dto.FullName;
+                student.User.PhoneNumber = dto.PhoneNumber;
+                if (!string.IsNullOrWhiteSpace(dto.Email) && student.User.Email != dto.Email)
+                {
+                    student.User.Email = dto.Email;
+                    student.User.UserName = dto.Email;
+                }
 
+                var identityResult = await _userManager.UpdateAsync(student.User);
+                if (!identityResult.Succeeded)
+                {
+                    return new BadRequestObjectResult(identityResult.Errors.Select(e => e.Description));
+                }
+            }
 
             await _context.SaveChangesAsync();
-            return new OkResult();
+
+            var updated = new StudentDto
+            {
+                StudentId = student.StudentId,
+                UserId = student.UserId,
+                FullName = student.User?.FullName,
+                Email = student.User?.Email,
+                PhoneNumber = student.User?.PhoneNumber,
+                DateOfBirth = student.DateOfBirth,
+                EnrollmentDate = student.EnrollmentDate,
+                CNIC = student.CNIC
+            };
+
+            return new OkObjectResult(updated);
         }
 
         public async Task<IActionResult> DeleteStudent(Guid studentId)
         {
-            var student = await _context.Students
-                .Include(s => s.User)
-                .FirstOrDefaultAsync(s => s.StudentId == studentId);
-
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == studentId);
             if (student == null)
-                return new NotFoundResult();
+                return new NotFoundObjectResult("Student not found.");
+
+            var enrollments = _context.StudentEnrollments.Where(e => e.StudentId == studentId);
+            _context.StudentEnrollments.RemoveRange(enrollments);
 
             _context.Students.Remove(student);
             await _context.SaveChangesAsync();
 
-            // Also remove the linked Identity user
-            if (student.User != null)
-                await _userManager.DeleteAsync(student.User);
+            return new OkObjectResult(new { message = "Deleted" });
+        }
 
-            return new OkResult();
+
+
+        // exports students to Excel
+        public async Task<IActionResult> ExportStudentsToExcel()
+        {
+            var students = await _context.Students
+                .Include(s => s.User)
+                .Select(s => new
+                {
+                    s.StudentId,
+                    FullName = s.User.FullName,
+                    Email = s.User.Email,
+                    PhoneNumber = s.User.PhoneNumber,
+                    s.DateOfBirth,
+                    s.EnrollmentDate,
+                    s.CNIC
+                })
+                .ToListAsync();
+
+            using var workbook = new XLWorkbook();
+
+            var worksheet = workbook.Worksheets.Add("Students");
+
+            // Headers
+            worksheet.Cell(1, 1).Value = "StudentId";
+            worksheet.Cell(1, 2).Value = "FullName";
+            worksheet.Cell(1, 3).Value = "Email";
+            worksheet.Cell(1, 4).Value = "PhoneNumber";
+            worksheet.Cell(1, 5).Value = "DateOfBirth";
+            worksheet.Cell(1, 6).Value = "EnrollmentDate";
+            worksheet.Cell(1, 7).Value = "CNIC";
+
+            // Data
+            for (int i = 0; i < students.Count; i++)
+            {
+                var student = students[i];
+                var row = i + 2;
+
+                worksheet.Cell(row, 1).Value = student.StudentId.ToString();
+                worksheet.Cell(row, 2).Value = student.FullName;
+                worksheet.Cell(row, 3).Value = student.Email;
+                worksheet.Cell(row, 4).Value = student.PhoneNumber;
+                worksheet.Cell(row, 5).Value = student.DateOfBirth;
+                worksheet.Cell(row, 6).Value = student.EnrollmentDate;
+                worksheet.Cell(row, 7).Value = student.CNIC;
+            }
+
+            // Format headers
+            worksheet.Row(1).Style.Font.Bold = true;
+
+            // Adjust column widths
+            worksheet.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+
+            workbook.SaveAs(stream);
+
+            var content = stream.ToArray();
+            var contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            var fileName = "Students.xlsx";
+
+            return new Microsoft.AspNetCore.Mvc.FileContentResult(content, contentType)
+            {
+                FileDownloadName = fileName
+            };
         }
     }
 }

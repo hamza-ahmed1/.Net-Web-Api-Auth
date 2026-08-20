@@ -27,6 +27,9 @@ namespace Auth.Data
 
         public DbSet<Attendance> Attendances { get; set; }
 
+        public DbSet<Exam> Exams { get; set; }
+
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -65,6 +68,21 @@ namespace Auth.Data
     .HasIndex(a => new { a.StudentEnrollmentId, a.TeacherSectionCourseId, a.AttendanceDate })
     .IsUnique();
 
+
+            builder.Entity<ExamResult>()
+    .HasOne(x => x.Exam)
+    .WithMany()
+    .HasForeignKey(x => x.ExamId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ExamResult>()
+                .HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ExamResult>()
+    .HasIndex(x => new { x.ExamId, x.StudentId })
+    .IsUnique();
             builder.Entity<IdentityRole>().HasData(
         new IdentityRole
         {
@@ -91,9 +109,7 @@ namespace Auth.Data
             Name = "CourseCoordinator",
             NormalizedName = "COURSECOORDINATOR",
         }
-    );
-
-
+    );   
         }
     }
 }

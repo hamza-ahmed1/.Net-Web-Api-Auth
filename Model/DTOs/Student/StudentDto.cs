@@ -17,11 +17,10 @@
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string? PhoneNumber { get; set; }
-
-        public Guid sectionId { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
         public string CNIC { get; set; } = string.Empty;
+        public Guid SectionId { get; set; }   // ← this was missing, causing CS1061
     }
 
     public class StudentUpdateDto

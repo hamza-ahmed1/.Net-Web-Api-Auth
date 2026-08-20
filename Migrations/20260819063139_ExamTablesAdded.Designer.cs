@@ -4,6 +4,7 @@ using Auth.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819063139_ExamTablesAdded")]
+    partial class ExamTablesAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -194,7 +197,7 @@ namespace Auth.Migrations
 
                     b.HasIndex("TeacherSectionCourseId");
 
-                    b.ToTable("Exams");
+                    b.ToTable("Exam");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.ExamResult", b =>
@@ -413,31 +416,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "682017c3-adbc-483a-b03f-a85c5ac75b70",
+                            Id = "880519df-a364-42f2-b0bb-9d7099b844c2",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "37598927-ab79-44c5-a02f-64f35c16a973",
+                            Id = "fea55e56-c74b-4dfa-8d6b-fa4dda551fdd",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "013bc1bd-7704-4ac4-9b2d-8d5a5cd4d411",
+                            Id = "f172cc4f-9941-4886-963c-b0bfe7b71a18",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "c9a408a9-c73e-444a-b612-ec6908e45f7c",
+                            Id = "11365bab-9d6e-4c55-80fc-e421eeb19026",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "a154072b-834e-433e-9abd-63ced36b177a",
+                            Id = "d51d456c-979e-45bb-bbf6-45c296c47254",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });

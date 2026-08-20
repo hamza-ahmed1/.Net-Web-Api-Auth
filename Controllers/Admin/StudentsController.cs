@@ -37,5 +37,10 @@ namespace Auth.Controllers
         [HttpDelete("{studentId}")]
         public async Task<IActionResult> DeleteStudent(Guid studentId)
             => await _studentService.DeleteStudent(studentId);
+
+
+        [HttpGet("export")]
+        public async Task<IActionResult> ExportStudentsToCsv()
+            => await _studentService.ExportStudentsToExcel();
     }
 }
