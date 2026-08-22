@@ -23,4 +23,14 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="D:\.Net Web Api\Auth\Model\DTOs\.editorconfig" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="D:\.Net Web Api\Auth\Model\DTOs\.editorconfig" />
+  </ItemGroup>
+
 </Project>

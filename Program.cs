@@ -117,56 +117,83 @@ using (var scope = app.Services.CreateScope())
             await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
         }
     }
-    // Seed default data (roles, admin user)
+    // Seed default data (roles, admin user). Values can be configured via appsettings or env variables:
+    // Admin:UserName, Admin:Password, Admin:Role, Admin:Seed (true/false)
     try
     {
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var config = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
 
-        const string adminRole = "Admin";
-        const string adminUserName = "lms.admin.com";
-        const string adminPassword = "Admin@1234";
+        var seedAdmin = true;
+        var seedCfg = config["Admin:Seed"] ?? Environment.GetEnvironmentVariable("ADMIN_SEED");
+        if (!string.IsNullOrWhiteSpace(seedCfg) && bool.TryParse(seedCfg, out var parsed)) seedAdmin = parsed;
 
-        if (!await roleManager.RoleExistsAsync(adminRole))
+        if (!seedAdmin)
         {
-            var r = new IdentityRole(adminRole);
-            var rr = await roleManager.CreateAsync(r);
-            if (rr.Succeeded)
-                logger.LogInformation("Created role '{Role}'", adminRole);
-            else
-                logger.LogWarning("Failed creating role '{Role}': {Errors}", adminRole, string.Join(';', rr.Errors.Select(e => e.Description)));
-        }
-
-        var existing = await userManager.FindByNameAsync(adminUserName);
-        if (existing == null)
-        {
-            var admin = new ApplicationUser
-            {
-                UserName = adminUserName,
-                Email = adminUserName,
-                EmailConfirmed = true,
-                FullName = "Administrator"
-            };
-
-            var result = await userManager.CreateAsync(admin, adminPassword);
-            if (result.Succeeded)
-            {
-                logger.LogInformation("Created admin user '{UserName}'", adminUserName);
-                await userManager.AddToRoleAsync(admin, adminRole);
-                logger.LogInformation("Assigned '{UserName}' to role '{Role}'", adminUserName, adminRole);
-            }
-            else
-            {
-                logger.LogWarning("Failed creating admin user '{UserName}': {Errors}", adminUserName, string.Join(';', result.Errors.Select(e => e.Description)));
-            }
+            logger.LogInformation("Admin seeding skipped by configuration (Admin:Seed=false).");
         }
         else
         {
-            // Ensure admin is in role
-            if (!await userManager.IsInRoleAsync(existing, adminRole))
+            var adminRole = config["Admin:Role"] ?? Environment.GetEnvironmentVariable("ADMIN_ROLE") ?? "Admin";
+            var adminUserName = config["Admin:UserName"] ?? Environment.GetEnvironmentVariable("ADMIN_USERNAME") ?? "lms.admin@gmail.com";
+            var adminPassword = config["Admin:Password"] ?? Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? "Admin@1234";
+
+            // ensure role exists
+            if (!await roleManager.RoleExistsAsync(adminRole))
             {
-                await userManager.AddToRoleAsync(existing, adminRole);
-                logger.LogInformation("Added existing user '{UserName}' to role '{Role}'", adminUserName, adminRole);
+                var r = new IdentityRole(adminRole);
+                var rr = await roleManager.CreateAsync(r);
+                if (rr.Succeeded)
+                    logger.LogInformation("Created role '{Role}'", adminRole);
+                else
+                    logger.LogWarning("Failed creating role '{Role}': {Errors}", adminRole, string.Join(';', rr.Errors.Select(e => e.Description)));
+            }
+
+            // Look up by email first, then by username
+            var existing = await userManager.FindByEmailAsync(adminUserName) ?? await userManager.FindByNameAsync(adminUserName);
+            if (existing == null)
+            {
+                var admin = new ApplicationUser
+                {
+                    UserName = adminUserName,
+                    Email = adminUserName,
+                    EmailConfirmed = true,
+                    FullName = "Administrator"
+                };
+
+                var result = await userManager.CreateAsync(admin, adminPassword);
+                if (result.Succeeded)
+                {
+                    logger.LogInformation("Created admin user '{UserName}'", adminUserName);
+                    var roleAdd = await userManager.AddToRoleAsync(admin, adminRole);
+                    if (roleAdd.Succeeded)
+                        logger.LogInformation("Assigned '{UserName}' to role '{Role}'", adminUserName, adminRole);
+                    else
+                        logger.LogWarning("Failed to assign role '{Role}' to '{UserName}': {Errors}", adminRole, adminUserName, string.Join(';', roleAdd.Errors.Select(e => e.Description)));
+                }
+                else
+                {
+                    logger.LogWarning("Failed creating admin user '{UserName}': {Errors}", adminUserName, string.Join(';', result.Errors.Select(e => e.Description)));
+                    foreach (var err in result.Errors)
+                        logger.LogDebug("Identity error: {Code} - {Desc}", err.Code, err.Description);
+                }
+            }
+            else
+            {
+                // Ensure admin is in role
+                if (!await userManager.IsInRoleAsync(existing, adminRole))
+                {
+                    var addRes = await userManager.AddToRoleAsync(existing, adminRole);
+                    if (addRes.Succeeded)
+                        logger.LogInformation("Added existing user '{UserName}' to role '{Role}'", adminUserName, adminRole);
+                    else
+                        logger.LogWarning("Failed to add existing user '{UserName}' to role '{Role}': {Errors}", adminUserName, adminRole, string.Join(';', addRes.Errors.Select(e => e.Description)));
+                }
+                else
+                {
+                    logger.LogInformation("Admin user '{UserName}' already exists and is in role '{Role}'", adminUserName, adminRole);
+                }
             }
         }
     }

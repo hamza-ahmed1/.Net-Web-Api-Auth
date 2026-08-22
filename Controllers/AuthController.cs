@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 namespace Auth.Controllers
 {
     [ApiController]
@@ -132,6 +133,32 @@ namespace Auth.Controllers
             }
             Response.Cookies.Delete("refreshToken");
             return Ok(new { message = "Logged out" });
+        }
+
+
+        [HttpPost("change-password")]
+        [Authorize]
+        
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
+        {
+            // get user Id
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPasword);
+            if(result.Succeeded)
+            {
+                return Ok(new { message = "Password changed successfully" });
+            }
+            else
+            {
+                return BadRequest(result.Errors);
+            }
+
+
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using Auth.Model.DTOs.Exam;
 using Auth.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.Teacher
