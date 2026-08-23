@@ -144,6 +144,25 @@ namespace Auth.Services
             }
         }
 
+        public async Task<List<TeacherDetailDto>> GetAllTechers()
+        {
+            return await _context.Teachers.Include(t => t.User).Select(t => new TeacherDetailDto
+            {
+                Teacher_id=t.Teacher_Id,
+                Address = t.Address,
+                Fullname = t.User.FullName,
+                IsActive = t.IsActive,
+                CNIC = t.CNIC,
+                DateOfBirth = t.DateOfBirth,
+                Department = t.Department,
+                Salary = t.Salary,
+                Email = t.User.Email,
+                HireDate = t.HireDate,
+                IdentificationNumber = t.IdentificationNumber,
+                Qualification = t.Qualification
+            }).ToListAsync();
+        }
+
         public async Task<IActionResult> DeleteTeacher(Guid teacherId)
         {
             // Find teacher

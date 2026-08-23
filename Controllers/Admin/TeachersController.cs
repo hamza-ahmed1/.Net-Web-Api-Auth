@@ -24,7 +24,11 @@ namespace Auth.Controllers.Admin
             return await _teacherService.RegisterTeacher(Dto);
         }
 
-
+        [HttpGet]
+        public async Task<List<TeacherDetailDto>> GetAllTeachers()
+        {
+            return await _teacherService.GetAllTechers();
+        }
         [HttpPut]
 
         public async Task<IActionResult> UpdateTeacher(TeacherDetailDto Dto)

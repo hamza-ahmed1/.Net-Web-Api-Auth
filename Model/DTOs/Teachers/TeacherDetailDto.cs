@@ -6,7 +6,7 @@ namespace Auth.Model.DTOs.Teachers
 {
     public class TeacherDetailDto
     {
-
+        public Guid Teacher_id { get; set; }
         [Required]
         public string Email { get; set; } = string.Empty;
         [Required]

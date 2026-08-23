@@ -6,6 +6,9 @@ namespace Auth.Services.Interfaces
     public interface ITeacherService
     {
         public Task<IActionResult> RegisterTeacher(CreateTeacherDto dto);
+
+        public Task<List<TeacherDetailDto>> GetAllTechers();
+        
         public Task<IActionResult> UpdateTeacherDetails(TeacherDetailDto dto);
 
         public Task<IActionResult> DeleteTeacher(Guid teacherId);
