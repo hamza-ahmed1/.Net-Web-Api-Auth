@@ -12,7 +12,11 @@ namespace Auth.Model.Entities
         public string Title { get; set; } = string.Empty;
 
         [Required]
-        public string ExamType { get; set; } = string.Empty;
+        [ForeignKey(nameof(ExamType))]
+
+        public Guid ExamTypeId { get; set; }
+        public ExamType ExamType { get; set; }
+  
         [Required]
         public int TotalMarks { get; set; }
 

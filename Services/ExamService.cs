@@ -29,7 +29,7 @@ namespace Auth.Services
 
             var exam = new Exam
             {
-                ExamType = examDto.ExamType,
+                ExamTypeId = examDto.ExamTypeId,
                 IsPublished = examDto.IsPublished,
                 TeacherSectionCourseId = examDto.TeacherSectionCourseId,
                 Title = examDto.Title,
@@ -55,7 +55,7 @@ namespace Auth.Services
             {
                 return new BadRequestObjectResult($"TeacherSectionCourse with id {examDto.TeacherSectionCourseId} does not exist.");
             }
-            exam.ExamType = examDto.ExamType;
+            exam.ExamTypeId = examDto.ExamTypeId;
             exam.IsPublished = examDto.IsPublished;
             exam.TeacherSectionCourseId = examDto.TeacherSectionCourseId;
             exam.Title = examDto.Title;

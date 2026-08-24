@@ -31,6 +31,7 @@ namespace Auth.Data
 
         public DbSet<ExamType> ExamTypes { get; set; }
 
+        public DbSet<ExamResult> ExamResults { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

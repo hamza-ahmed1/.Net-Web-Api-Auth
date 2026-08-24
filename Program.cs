@@ -62,6 +62,7 @@ builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IExamTypeService,ExamTypeService>();
+builder.Services.AddScoped<IExamResultService, ExamResultService>();
 
 
 

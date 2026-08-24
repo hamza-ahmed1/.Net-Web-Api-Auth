@@ -8,7 +8,7 @@ namespace Auth.Model.DTOs.Exam
         [Required]
         public string Title { get; set; } = string.Empty;
         [Required]
-        public string ExamType { get; set; } = string.Empty;
+        public Guid ExamTypeId { get; set; }
         [Required]
         public int TotalMarks { get; set; }
         [Required]

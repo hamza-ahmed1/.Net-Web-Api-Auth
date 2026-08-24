@@ -170,9 +170,8 @@ namespace Auth.Migrations
                     b.Property<DateOnly>("ExamDate")
                         .HasColumnType("date");
 
-                    b.Property<string>("ExamType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("ExamTypeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("bit");
@@ -191,6 +190,8 @@ namespace Auth.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("ExamID");
+
+                    b.HasIndex("ExamTypeId");
 
                     b.HasIndex("TeacherSectionCourseId");
 
@@ -229,7 +230,7 @@ namespace Auth.Migrations
                     b.HasIndex("ExamId", "StudentId")
                         .IsUnique();
 
-                    b.ToTable("ExamResult");
+                    b.ToTable("ExamResults");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.ExamType", b =>
@@ -428,31 +429,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "feec76a5-90ab-47c1-8564-96b872c43379",
+                            Id = "c655921b-a722-45eb-87d7-4cf16dcf16db",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "71e341ae-5ce7-4a49-91f8-2d63d01cd263",
+                            Id = "4cba2d3d-ca1e-44e0-b579-a4749a005efe",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "89510b54-ec4d-4033-9855-875769e5035d",
+                            Id = "fc11c108-cde5-4d2b-b770-dbfaada21416",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "ab9f9681-48a8-4553-80e2-b338a4082a08",
+                            Id = "6340f5fb-898f-4812-a3cf-6657490677bf",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "17728553-1455-4147-bed6-725033a3b59d",
+                            Id = "7f16d18a-21ad-4f38-b821-c4e317f06869",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -645,11 +646,19 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.Exam", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.ExamType", "ExamType")
+                        .WithMany()
+                        .HasForeignKey("ExamTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Auth.Model.Entities.TeacherSectionCourse", "TeacherSectionCourse")
                         .WithMany()
                         .HasForeignKey("TeacherSectionCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ExamType");
 
                     b.Navigation("TeacherSectionCourse");
                 });

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260819063139_ExamTablesAdded")]
-    partial class ExamTablesAdded
+    [Migration("20260824115548_ExamresultWorkDone")]
+    partial class ExamresultWorkDone
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -173,9 +173,8 @@ namespace Auth.Migrations
                     b.Property<DateOnly>("ExamDate")
                         .HasColumnType("date");
 
-                    b.Property<string>("ExamType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("ExamTypeId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsPublished")
                         .HasColumnType("bit");
@@ -195,9 +194,11 @@ namespace Auth.Migrations
 
                     b.HasKey("ExamID");
 
+                    b.HasIndex("ExamTypeId");
+
                     b.HasIndex("TeacherSectionCourseId");
 
-                    b.ToTable("Exam");
+                    b.ToTable("Exams");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.ExamResult", b =>
@@ -232,7 +233,22 @@ namespace Auth.Migrations
                     b.HasIndex("ExamId", "StudentId")
                         .IsUnique();
 
-                    b.ToTable("ExamResult");
+                    b.ToTable("ExamResults");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.ExamType", b =>
+                {
+                    b.Property<Guid>("ExamTypeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ExamTypeId");
+
+                    b.ToTable("ExamTypes");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.RefreshToken", b =>
@@ -416,31 +432,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "880519df-a364-42f2-b0bb-9d7099b844c2",
+                            Id = "c655921b-a722-45eb-87d7-4cf16dcf16db",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "fea55e56-c74b-4dfa-8d6b-fa4dda551fdd",
+                            Id = "4cba2d3d-ca1e-44e0-b579-a4749a005efe",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "f172cc4f-9941-4886-963c-b0bfe7b71a18",
+                            Id = "fc11c108-cde5-4d2b-b770-dbfaada21416",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "11365bab-9d6e-4c55-80fc-e421eeb19026",
+                            Id = "6340f5fb-898f-4812-a3cf-6657490677bf",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "d51d456c-979e-45bb-bbf6-45c296c47254",
+                            Id = "7f16d18a-21ad-4f38-b821-c4e317f06869",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -633,11 +649,19 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.Exam", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.ExamType", "ExamType")
+                        .WithMany()
+                        .HasForeignKey("ExamTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Auth.Model.Entities.TeacherSectionCourse", "TeacherSectionCourse")
                         .WithMany()
                         .HasForeignKey("TeacherSectionCourseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ExamType");
 
                     b.Navigation("TeacherSectionCourse");
                 });
