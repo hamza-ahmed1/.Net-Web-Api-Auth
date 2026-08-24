@@ -29,7 +29,7 @@ namespace Auth.Data
 
         public DbSet<Exam> Exams { get; set; }
 
-
+        public DbSet<ExamType> ExamTypes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

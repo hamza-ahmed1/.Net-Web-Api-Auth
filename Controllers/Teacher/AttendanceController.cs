@@ -18,9 +18,6 @@ namespace Auth.Controllers.Teacher
             _attendanceService = attendanceService;
             _context = context;
         }
-
-        // TODO: confirm Teacher's real FK to ApplicationUser (assumed: Teacher.UserId)
-        // TODO: confirm actual JWT claim name for logged-in user id (assumed: "sub")
         private async Task<Guid?> GetCurrentTeacherId()
         {
             if (User?.Identity?.IsAuthenticated != true)
