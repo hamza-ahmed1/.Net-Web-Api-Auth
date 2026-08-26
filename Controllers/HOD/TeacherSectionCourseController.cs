@@ -69,5 +69,12 @@ namespace Auth.Controllers.HOD
 
             return NoContent();
         }
+
+        [HttpGet("teacher/{teacherId:guid}")]
+        public async Task<ActionResult<IEnumerable<TeacherSectionCourseDto>>> GetAllByTeacherId(Guid teacherId)
+        {
+            var result = await _service.GetAllByTeacherIdAsync(teacherId);
+            return Ok(result);
+        }
     }
 }

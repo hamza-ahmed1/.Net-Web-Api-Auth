@@ -36,6 +36,17 @@ namespace Auth.Services
             return entity is null ? null : MapToDto(entity);
         }
 
+        public async Task<IEnumerable<TeacherSectionCourseDto>> GetAllByTeacherIdAsync(Guid teacherId)
+        {
+            return await _context.TeacherSectionCourses
+                .Include(x => x.Teacher)
+                .Include(x => x.Section)
+                .Include(x => x.Course)
+                .Where(x => x.TeacherId == teacherId)
+                .Select(x => MapToDto(x))
+                .ToListAsync();
+        }
+
         public async Task<TeacherSectionCourseDto> CreateAsync(TeacherSectionCourseCreateDto dto)
         {
             var entity = new TeacherSectionCourse
