@@ -38,6 +38,9 @@ namespace Auth.Controllers
         public async Task<IActionResult> DeleteStudent(Guid studentId)
             => await _studentService.DeleteStudent(studentId);
 
+        [HttpGet("section/{sectionId}")]
+        public async Task<IActionResult> GetStudentsBySectionId(Guid sectionId)
+            => await _studentService.GetStudentBySectionId(sectionId);
 
         [HttpGet("export")]
         public async Task<IActionResult> ExportStudentsToCsv()

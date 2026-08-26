@@ -33,4 +33,12 @@
         public DateTime EnrollmentDate { get; set; }
         public string CNIC { get; set; } = string.Empty;
     }
+
+    class StudentMarksDto
+    {
+        public Guid StudentId { get; set; }
+
+        public string FullName { get; set; } = string.Empty;
+
+    }
 }

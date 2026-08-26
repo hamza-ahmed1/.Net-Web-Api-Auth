@@ -1,70 +1,74 @@
-﻿Clean API list
+﻿
+API list — concise
 
 Base URL: {BASE_URL} (e.g. https://localhost:7179)
 
 Auth
-- POST {BASE_URL}/api/auth/register — Register user
-- POST {BASE_URL}/api/auth/login — Login (returns access token; sets refreshToken cookie)
-- POST {BASE_URL}/api/auth/refresh — Refresh access token (uses refreshToken cookie)
-- POST {BASE_URL}/api/auth/logout — Logout (requires Authorization)
+- POST {BASE_URL}/api/auth/register
+- POST {BASE_URL}/api/auth/login
+- POST {BASE_URL}/api/auth/refresh
+- POST {BASE_URL}/api/auth/logout (requires Authorization)
 
 Roles
-- GET {BASE_URL}/api/roles — List roles
-- POST {BASE_URL}/api/roles — Create role (body: raw string or JSON with role name)
+- GET {BASE_URL}/api/roles
+- POST {BASE_URL}/api/roles
 
-Admin / Teachers
-- POST {BASE_URL}/api/admin/teachers — Create teacher
-- PUT {BASE_URL}/api/admin/teachers — Update teacher
-- GET {BASE_URL}/api/admin/teachers/{teacherId} — Get teacher by id
-- DELETE {BASE_URL}/api/admin/teachers/{teacherId} — Delete teacher
-- POST {BASE_URL}/api/admin/teachers/restore/{teacherId} — Restore teacher
-- POST {BASE_URL}/api/admin/teachers/promotion/{teacherId} — Promote to HOD
-- POST {BASE_URL}/api/admin/teachers/demotion/{teacherId} — Demote to teacher
+Teachers (admin)
+- POST {BASE_URL}/api/admin/teachers
+- PUT {BASE_URL}/api/admin/teachers
+- GET {BASE_URL}/api/admin/teachers/{teacherId}
+- DELETE {BASE_URL}/api/admin/teachers/{teacherId}
+- POST {BASE_URL}/api/admin/teachers/restore/{teacherId}
+- POST {BASE_URL}/api/admin/teachers/promotion/{teacherId}
+- POST {BASE_URL}/api/admin/teachers/demotion/{teacherId}
 
 Students
-- POST {BASE_URL}/api/student — Create student
-- GET {BASE_URL}/api/student — List students
-- GET {BASE_URL}/api/student/{studentId} — Get student by id
-- PUT {BASE_URL}/api/student/{studentId} — Update student
-- DELETE {BASE_URL}/api/student/{studentId} — Delete student
-- GET {BASE_URL}/api/student/export — Export students (Excel)
+- POST {BASE_URL}/api/student
+- GET {BASE_URL}/api/student
+- GET {BASE_URL}/api/student/{studentId}
+- GET {BASE_URL}/api/student/{sectionId}
+- PUT {BASE_URL}/api/student/{studentId}
+- DELETE {BASE_URL}/api/student/{studentId}
+- GET {BASE_URL}/api/student/export
 
 Courses
-- POST {BASE_URL}/api/courses — Create course
-- GET {BASE_URL}/api/courses — List courses
-- GET {BASE_URL}/api/courses/{id} — Get course
-- PUT {BASE_URL}/api/courses/{id} — Update course
-- DELETE {BASE_URL}/api/courses/{id} — Delete course
+- POST {BASE_URL}/api/courses
+- GET {BASE_URL}/api/courses
+- GET {BASE_URL}/api/courses/{id}
+- PUT {BASE_URL}/api/courses/{id}
+- DELETE {BASE_URL}/api/courses/{id}
 
 Sections
-- POST {BASE_URL}/api/sections — Create section
-- GET {BASE_URL}/api/sections — List sections
-- GET {BASE_URL}/api/sections/{id} — Get section
-- PUT {BASE_URL}/api/sections/{id} — Update section
-- DELETE {BASE_URL}/api/sections/{id} — Delete section
+- POST {BASE_URL}/api/sections
+- GET {BASE_URL}/api/sections
+- GET {BASE_URL}/api/sections/{id}
+- PUT {BASE_URL}/api/sections/{id}
+- DELETE {BASE_URL}/api/sections/{id}
 
 Teacher-Section-Course Assignments
-- GET {BASE_URL}/api/TeacherSectionCourse — List assignments
-- GET {BASE_URL}/api/TeacherSectionCourse/{id} — Get assignment
-- POST {BASE_URL}/api/TeacherSectionCourse — Create assignment
-- PUT {BASE_URL}/api/TeacherSectionCourse/{id} — Update assignment
-- DELETE {BASE_URL}/api/TeacherSectionCourse/{id} — Delete assignment
+- GET {BASE_URL}/api/TeacherSectionCourse
+- GET {BASE_URL}/api/TeacherSectionCourse/{id}
+- POST {BASE_URL}/api/TeacherSectionCourse
+- PUT {BASE_URL}/api/TeacherSectionCourse/{id}
+- DELETE {BASE_URL}/api/TeacherSectionCourse/{id}
 
 Attendance
-- POST {BASE_URL}/api/attendance — Mark single attendance
-- POST {BASE_URL}/api/attendance/bulk — Mark bulk attendance
-- GET {BASE_URL}/api/attendance/{attendanceId} — Get attendance record
-- GET {BASE_URL}/api/attendance/course/{teacherSectionCourseId}?date={yyyy-MM-dd} — Get course attendance by date
-- GET {BASE_URL}/api/attendance/student/{studentId}?courseId={id}&from={date}&to={date} — Get student attendance history
-- GET {BASE_URL}/api/attendance/student/{studentId}/courses — Get active courses for student
-- PUT {BASE_URL}/api/attendance/{attendanceId} — Update attendance
-- DELETE {BASE_URL}/api/attendance/{attendanceId} — Delete attendance
-- GET {BASE_URL}/api/attendance/course/{teacherSectionCourseId}/summary?from={date}&to={date} — Course attendance summary
+- POST {BASE_URL}/api/attendance
+- POST {BASE_URL}/api/attendance/bulk
+- GET {BASE_URL}/api/attendance/{attendanceId}
+- GET {BASE_URL}/api/attendance/course/{teacherSectionCourseId}?date={yyyy-MM-dd}
+- GET {BASE_URL}/api/attendance/student/{studentId}?courseId={id}&from={date}&to={date}
+- GET {BASE_URL}/api/attendance/student/{studentId}/courses
+- PUT {BASE_URL}/api/attendance/{attendanceId}
+- DELETE {BASE_URL}/api/attendance/{attendanceId}
+- GET {BASE_URL}/api/attendance/course/{teacherSectionCourseId}/summary?from={date}&to={date}
 
 Exams
-- POST {BASE_URL}/api/exam — Create exam
+- POST {BASE_URL}/api/exam\
+- GET {BASE_URL}/api/exam
+- GET {BASE_URL}/api/exam/{examId}
 
-Notes
-- Use Authorization: Bearer {accessToken} for protected endpoints.
-- Login sets an HttpOnly refreshToken cookie; call POST /api/auth/refresh to obtain a new access token.
+
+Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToken}
+
 

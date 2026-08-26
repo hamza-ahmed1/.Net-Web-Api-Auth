@@ -214,8 +214,19 @@ namespace Auth.Services
             return new OkObjectResult(new { message = "Deleted" });
         }
 
+        public async Task<IActionResult> GetStudentBySectionId(Guid sectionId)
+        {
+            var students = await _context.Students
+                .Where(s => s.StudentEnrollments.Any(e => e.SectionId == sectionId))
+                .Select(s => new StudentMarksDto
+                {
+                    StudentId = s.StudentId,
+                    FullName = s.User.FullName
+                })
+                .ToListAsync();
 
-
+            return new OkObjectResult(new { students });
+        }
         // exports students to Excel
         public async Task<IActionResult> ExportStudentsToExcel()
         {
