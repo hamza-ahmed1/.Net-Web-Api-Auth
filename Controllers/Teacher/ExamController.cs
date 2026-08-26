@@ -72,6 +72,21 @@ namespace Auth.Controllers.Teacher
             }
         }
 
+
+        [HttpGet("teacher/{teacherId}")]
+            public async Task<IActionResult> GetAllExambyTeacherId(Guid teacherId)
+        {
+            try
+            {
+                var result = await _examService.GetExamByTeacherId(teacherId);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
+            }
+        }
+
       
     }
 }

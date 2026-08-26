@@ -85,6 +85,12 @@ namespace Auth.Services
             return new OkObjectResult(new { exams = exams });
         }
 
+        public async Task<IActionResult> GetExamByTeacherId(Guid id)
+        {
+            var exams = await _context.Exams.Where(e => e.TeacherSectionCourse.TeacherId == id).ToListAsync();
+            return new OkObjectResult(new { exams = exams });
+        }
+
 
     }
 }
