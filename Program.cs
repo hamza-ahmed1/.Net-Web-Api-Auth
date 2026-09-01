@@ -215,5 +215,14 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogError(ex, "An error occurred while seeding default data.");
     }
+    // Run additional domain seeding (teachers, students, sections, courses)
+    try
+    {
+        await SeedDate.InitializeAsync(scope.ServiceProvider);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while running SeedDate.InitializeAsync.");
+    }
 }
 app.Run();

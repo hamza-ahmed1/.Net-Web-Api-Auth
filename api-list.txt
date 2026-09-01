@@ -88,6 +88,19 @@ Succful Result:
     "examResultId": "b6d74bec-f4db-4224-a7ff-08df07ed613e"
 }
 
+
+-> Bulk Upload: POST
+http://localhost:5000/api/examresult/bulk
+On Sucess
+-> bulk Update: PUT
+http://localhost:5000/api/examresult/bulk
+On Success:
+{
+    "message": "Exam results updated successfully.",
+    "totalUpdated": 30
+}
+
 Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToken}
+
 
 

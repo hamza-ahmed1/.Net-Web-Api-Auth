@@ -30,6 +30,34 @@ namespace Auth.Controllers.Teacher
                 return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
             }
         }
+
+        [HttpPost("bulk")]
+        public async Task<IActionResult> CreateExamResultsBulk([FromBody] List<ExamResultCreateDto> dtos)
+        {
+            try
+            {
+                var result = await _examResultService.UploadBulkResult(dtos);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpPut("bulk")]
+        public async Task<IActionResult> UpdateExamResultsBulk([FromBody] List<ExamResultCreateDto> dtos)
+        {
+            try
+            {
+                var result = await _examResultService.UpdateBulkResult(dtos);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Internal server error: {ex.Message}");
+            }
+        }
         [HttpPut("{examResultId}")]
         public async Task<IActionResult> UpdateExamResult(Guid examResultId, [FromBody] ExamResultCreateDto dto)
         {
