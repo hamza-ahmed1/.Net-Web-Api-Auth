@@ -51,18 +51,21 @@ builder.Services.AddAuthorization(options =>
 });
 
 
-builder.Services.AddScoped<Auth.Services.ITokenService, TokenService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITeacherService, TeacherService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<ITeacherSectionCourseService, TeacherSectionCourseService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
-//builder.Services.AddScoped<IStudentEnrollmentService, StudentEnrollmentService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IExamTypeService,ExamTypeService>();
 builder.Services.AddScoped<IExamResultService, ExamResultService>();
+builder.Services.AddScoped<IFeeCategoryService, FeeCategoryService>();
+builder.Services.AddScoped<IFeeTypeService, FeeTypeService>();
+builder.Services.AddScoped<IApplicableFeeService, ApplicableFeeService>();
+
 
 
 
@@ -110,6 +113,15 @@ using (var scope = app.Services.CreateScope())
         }
         catch (Exception ex)
         {
+            // If migration failed due to attempting to change an IDENTITY property,
+            // abort automatic migrations and require a manual migration that drops
+            // and recreates the affected column(s).
+            if (ex is InvalidOperationException && ex.Message != null && ex.Message.Contains("To change the IDENTITY property of a column"))
+            {
+                logger.LogError(ex, "Migration aborted: changing IDENTITY properties requires dropping and recreating the column. Please apply migration manually.");
+                break;
+            }
+
             logger.LogWarning(ex, "Database migration attempt {Attempt}/{Max} failed.", attempt, maxAttempts);
             if (attempt == maxAttempts)
             {

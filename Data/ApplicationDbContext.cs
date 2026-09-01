@@ -14,24 +14,20 @@ namespace Auth.Data
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
-
-        public DbSet<Course> Courses { get; set; }
-        
+        public DbSet<Course> Courses { get; set; }        
         public DbSet<TeacherSectionCourse> TeacherSectionCourses { get; set; }
-
         public DbSet<Section> Sections { get; set; }
-
         public DbSet<Student> Students { get; set; }
-
         public DbSet<StudentEnrollments> StudentEnrollments { get; set; }
-
         public DbSet<Attendance> Attendances { get; set; }
-
         public DbSet<Exam> Exams { get; set; }
-
         public DbSet<ExamType> ExamTypes { get; set; }
-
         public DbSet<ExamResult> ExamResults { get; set; }
+        public DbSet<FeeCategory> FeeCategories { get; set; }
+        public DbSet<FeeType> FeeTypes { get; set; }
+        public DbSet<ApplicableFee> ApplicableFees { get; set; }
+        public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<TransactionHistory> TransactionHistories { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -84,6 +80,45 @@ namespace Auth.Data
             builder.Entity<ExamResult>()
     .HasIndex(x => new { x.ExamId, x.StudentId })
     .IsUnique();
+
+
+            // Fee : Properties configuration for decimal precision
+            builder.Entity<FeeType>().Property(f => f.Amount).HasColumnType("decimal(10,2)");
+            builder.Entity<Invoice>().Property(i => i.TotalAmount).HasColumnType("decimal(10,2)");
+            builder.Entity<Invoice>().Property(i => i.AmountPaid).HasColumnType("decimal(10,2)");
+            // InvoiceItem and Payment entities were removed/renamed in the updated fee model.
+            // Configure TransactionHistory amount precision instead.
+            builder.Entity<TransactionHistory>().Property(t => t.Amount).HasColumnType("decimal(10,2)");
+
+            // Fee:
+            // Unique constraint on invoice number — prevents duplicate invoice numbers
+            builder.Entity<Invoice>()
+                .HasIndex(i => i.InvoiceNum)
+                .IsUnique();
+
+            // Prevent accidental cascade-delete chains across financial records —
+            // deleting a student should NOT silently delete their payment history
+            builder.Entity<ApplicableFee>()
+                .HasOne(af => af.Student)
+                .WithMany()
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Invoice>()
+                .HasOne(i => i.Student)
+                .WithMany()
+                .OnDelete(DeleteBehavior.Restrict);
+            builder.Entity<ApplicableFee>()
+                .Property(x => x.Status)
+                .HasConversion<string>();
+
+            // TransactionHistory -> Invoice: invoice can have many transaction history records
+            // Invoice currently doesn't declare a collection navigation property, so configure the relationship
+            // using WithMany() without a lambda to avoid requiring an Invoice.Navigation property.
+            builder.Entity<TransactionHistory>()
+                .HasOne(th => th.Invoice)
+                .WithMany()
+                .HasForeignKey(th => th.InvoiceId)
+                .OnDelete(DeleteBehavior.Cascade);
             builder.Entity<IdentityRole>().HasData(
         new IdentityRole
         {

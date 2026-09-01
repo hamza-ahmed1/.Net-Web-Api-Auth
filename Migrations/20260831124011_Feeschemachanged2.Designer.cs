@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260824115548_ExamresultWorkDone")]
-    partial class ExamresultWorkDone
+    [Migration("20260831124011_Feeschemachanged2")]
+    partial class Feeschemachanged2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,34 @@ namespace Auth.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("Auth.Model.Entities.ApplicableFee", b =>
+                {
+                    b.Property<Guid>("AfId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("FeeTypeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("AfId");
+
+                    b.HasIndex("FeeTypeId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ApplicableFees");
+                });
 
             modelBuilder.Entity("Auth.Model.Entities.ApplicationUser", b =>
                 {
@@ -251,6 +279,104 @@ namespace Auth.Migrations
                     b.ToTable("ExamTypes");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.FeeCategory", b =>
+                {
+                    b.Property<Guid>("FeeCategoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("FeeCategoryId");
+
+                    b.ToTable("FeeCategories");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.FeeType", b =>
+                {
+                    b.Property<Guid>("FeeTypeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AcademicTerm")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("ApplicableDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("FeeCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Per")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("FeeTypeId");
+
+                    b.HasIndex("FeeCategoryId");
+
+                    b.ToTable("FeeTypes");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Invoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvoiceNum")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceNum")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("Invoices");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -403,6 +529,35 @@ namespace Auth.Migrations
                     b.ToTable("TeacherSectionCourses");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.TransactionHistory", b =>
+                {
+                    b.Property<Guid>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionReference")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("TransactionHistories");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -432,31 +587,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "c655921b-a722-45eb-87d7-4cf16dcf16db",
+                            Id = "c76ba92c-2e29-4934-adc1-fd4d2a9f5dc2",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "4cba2d3d-ca1e-44e0-b579-a4749a005efe",
+                            Id = "299a4818-87b7-4fd4-af76-2dba6675144a",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "fc11c108-cde5-4d2b-b770-dbfaada21416",
+                            Id = "a5130439-ad2e-4761-82c7-55e3137eb634",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "6340f5fb-898f-4812-a3cf-6657490677bf",
+                            Id = "eb401576-03dc-47f4-8537-f9619c7e092c",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "7f16d18a-21ad-4f38-b821-c4e317f06869",
+                            Id = "9e9a4f6f-864b-440e-ab96-a1d76fc0e4f5",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -622,6 +777,25 @@ namespace Auth.Migrations
                     b.ToTable("Teachers");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.ApplicableFee", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.FeeType", "FeeType")
+                        .WithMany("ApplicableFees")
+                        .HasForeignKey("FeeTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Auth.Model.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FeeType");
+
+                    b.Navigation("Student");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.Attendance", b =>
                 {
                     b.HasOne("Teacher", "MarkedByTeacher")
@@ -681,6 +855,28 @@ namespace Auth.Migrations
                         .IsRequired();
 
                     b.Navigation("Exam");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.FeeType", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.FeeCategory", "FeeCategory")
+                        .WithMany("FeeTypes")
+                        .HasForeignKey("FeeCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FeeCategory");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Invoice", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Student");
                 });
@@ -751,6 +947,17 @@ namespace Auth.Migrations
                     b.Navigation("Section");
 
                     b.Navigation("Teacher");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.TransactionHistory", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -827,6 +1034,16 @@ namespace Auth.Migrations
             modelBuilder.Entity("Auth.Model.Entities.Course", b =>
                 {
                     b.Navigation("TeacherAssignments");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.FeeCategory", b =>
+                {
+                    b.Navigation("FeeTypes");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.FeeType", b =>
+                {
+                    b.Navigation("ApplicableFees");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.Section", b =>

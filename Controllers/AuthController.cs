@@ -3,6 +3,7 @@ using Auth.Model.DTOs;
 using Auth.Model.DTOs.AuthApi.Models.Dtos;
 using Auth.Model.Entities;
 using Auth.Services;
+using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

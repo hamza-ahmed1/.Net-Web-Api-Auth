@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Auth.Migrations
 {
     /// <inheritdoc />
-    public partial class InitMigration : Migration
+    public partial class initSchemaAdded : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -78,6 +78,18 @@ namespace Auth.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ExamTypes", x => x.ExamTypeId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FeeCategories",
+                columns: table => new
+                {
+                    FeeCategoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeeCategories", x => x.FeeCategoryId);
                 });
 
             migrationBuilder.CreateTable(
@@ -273,6 +285,55 @@ namespace Auth.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FeeTypes",
+                columns: table => new
+                {
+                    FeeTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FeeCategoryId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    Per = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AcademicTerm = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ApplicableDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FeeTypes", x => x.FeeTypeId);
+                    table.ForeignKey(
+                        name: "FK_FeeTypes_FeeCategories_FeeCategoryId",
+                        column: x => x.FeeCategoryId,
+                        principalTable: "FeeCategories",
+                        principalColumn: "FeeCategoryId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Invoices",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    InvoiceNum = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    StudentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TotalAmount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    AmountPaid = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    Currency = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedByAdminId = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Invoices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Invoices_Students_StudentId",
+                        column: x => x.StudentId,
+                        principalTable: "Students",
+                        principalColumn: "StudentId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "StudentEnrollments",
                 columns: table => new
                 {
@@ -332,6 +393,34 @@ namespace Auth.Migrations
                         column: x => x.TeacherId,
                         principalTable: "Teachers",
                         principalColumn: "Teacher_Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ApplicableFees",
+                columns: table => new
+                {
+                    AfId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    StudentId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    StudentId1 = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FeeTypeId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DueDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ApplicableFees", x => x.AfId);
+                    table.ForeignKey(
+                        name: "FK_ApplicableFees_FeeTypes_FeeTypeId",
+                        column: x => x.FeeTypeId,
+                        principalTable: "FeeTypes",
+                        principalColumn: "FeeTypeId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ApplicableFees_Students_StudentId1",
+                        column: x => x.StudentId1,
+                        principalTable: "Students",
+                        principalColumn: "StudentId",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -403,7 +492,36 @@ namespace Auth.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ExamResult",
+                name: "InvoiceItems",
+                columns: table => new
+                {
+                    ItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    InvoiceId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AfId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ApplicableFeeAfId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AmountSnapshot = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    AmountPaid = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InvoiceItems", x => x.ItemId);
+                    table.ForeignKey(
+                        name: "FK_InvoiceItems_ApplicableFees_ApplicableFeeAfId",
+                        column: x => x.ApplicableFeeAfId,
+                        principalTable: "ApplicableFees",
+                        principalColumn: "AfId",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_InvoiceItems_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalTable: "Invoices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ExamResults",
                 columns: table => new
                 {
                     ExamResultId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -416,18 +534,42 @@ namespace Auth.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ExamResult", x => x.ExamResultId);
+                    table.PrimaryKey("PK_ExamResults", x => x.ExamResultId);
                     table.ForeignKey(
-                        name: "FK_ExamResult_Exams_ExamId",
+                        name: "FK_ExamResults_Exams_ExamId",
                         column: x => x.ExamId,
                         principalTable: "Exams",
                         principalColumn: "ExamID",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ExamResult_Students_StudentId",
+                        name: "FK_ExamResults_Students_StudentId",
                         column: x => x.StudentId,
                         principalTable: "Students",
                         principalColumn: "StudentId",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Payments",
+                columns: table => new
+                {
+                    PaymentId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    InvoiceItemItemId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(10,2)", nullable: false),
+                    Mode = table.Column<int>(type: "int", nullable: false),
+                    TransactionReference = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PaidAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ReceivedByAdminId = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Payments", x => x.PaymentId);
+                    table.ForeignKey(
+                        name: "FK_Payments_InvoiceItems_InvoiceItemItemId",
+                        column: x => x.InvoiceItemItemId,
+                        principalTable: "InvoiceItems",
+                        principalColumn: "ItemId",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -436,12 +578,22 @@ namespace Auth.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { "11a3ab30-256e-4e3d-856b-8280571c4bb4", null, "HOD", "HOD" },
-                    { "909a15e5-9f49-4c65-a8d3-1ae6c8bdfc38", null, "Student", "STUDENT" },
-                    { "bd33ab72-3de7-4a7d-9b74-b11c830643eb", null, "CourseCoordinator", "COURSECOORDINATOR" },
-                    { "bd7e5740-36fc-4837-933a-5a3742938a32", null, "Admin", "ADMIN" },
-                    { "c4f39b1c-b2b6-4ca5-876d-1ca3bb4c69e3", null, "Teacher", "TEACHER" }
+                    { "25ed5d4a-cc21-4988-ad1b-da936f2e446c", null, "HOD", "HOD" },
+                    { "72c9a394-1a65-49b2-9f6d-e7be62da1582", null, "Teacher", "TEACHER" },
+                    { "a59c447a-998c-4511-baeb-b36b24628c4e", null, "Student", "STUDENT" },
+                    { "db62c8f2-036c-49cb-944c-fbb1dc22bc25", null, "CourseCoordinator", "COURSECOORDINATOR" },
+                    { "f5fc7f5f-f24d-4a63-8a4d-0ffff34f10bf", null, "Admin", "ADMIN" }
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ApplicableFees_FeeTypeId",
+                table: "ApplicableFees",
+                column: "FeeTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ApplicableFees_StudentId1",
+                table: "ApplicableFees",
+                column: "StudentId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -499,14 +651,14 @@ namespace Auth.Migrations
                 column: "TeacherSectionCourseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ExamResult_ExamId_StudentId",
-                table: "ExamResult",
+                name: "IX_ExamResults_ExamId_StudentId",
+                table: "ExamResults",
                 columns: new[] { "ExamId", "StudentId" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_ExamResult_StudentId",
-                table: "ExamResult",
+                name: "IX_ExamResults_StudentId",
+                table: "ExamResults",
                 column: "StudentId");
 
             migrationBuilder.CreateIndex(
@@ -518,6 +670,37 @@ namespace Auth.Migrations
                 name: "IX_Exams_TeacherSectionCourseId",
                 table: "Exams",
                 column: "TeacherSectionCourseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FeeTypes_FeeCategoryId",
+                table: "FeeTypes",
+                column: "FeeCategoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvoiceItems_ApplicableFeeAfId",
+                table: "InvoiceItems",
+                column: "ApplicableFeeAfId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvoiceItems_InvoiceId",
+                table: "InvoiceItems",
+                column: "InvoiceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Invoices_InvoiceNum",
+                table: "Invoices",
+                column: "InvoiceNum",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Invoices_StudentId",
+                table: "Invoices",
+                column: "StudentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Payments_InvoiceItemItemId",
+                table: "Payments",
+                column: "InvoiceItemItemId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RefreshTokens_UserId",
@@ -585,7 +768,10 @@ namespace Auth.Migrations
                 name: "Attendances");
 
             migrationBuilder.DropTable(
-                name: "ExamResult");
+                name: "ExamResults");
+
+            migrationBuilder.DropTable(
+                name: "Payments");
 
             migrationBuilder.DropTable(
                 name: "RefreshTokens");
@@ -600,13 +786,19 @@ namespace Auth.Migrations
                 name: "Exams");
 
             migrationBuilder.DropTable(
-                name: "Students");
+                name: "InvoiceItems");
 
             migrationBuilder.DropTable(
                 name: "ExamTypes");
 
             migrationBuilder.DropTable(
                 name: "TeacherSectionCourses");
+
+            migrationBuilder.DropTable(
+                name: "ApplicableFees");
+
+            migrationBuilder.DropTable(
+                name: "Invoices");
 
             migrationBuilder.DropTable(
                 name: "Courses");
@@ -616,6 +808,15 @@ namespace Auth.Migrations
 
             migrationBuilder.DropTable(
                 name: "Teachers");
+
+            migrationBuilder.DropTable(
+                name: "FeeTypes");
+
+            migrationBuilder.DropTable(
+                name: "Students");
+
+            migrationBuilder.DropTable(
+                name: "FeeCategories");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

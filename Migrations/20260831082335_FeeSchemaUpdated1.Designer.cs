@@ -4,6 +4,7 @@ using Auth.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831082335_FeeSchemaUpdated1")]
+    partial class FeeSchemaUpdated1
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,10 +36,6 @@ namespace Auth.Migrations
 
                     b.Property<Guid>("FeeTypeId")
                         .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -364,6 +363,9 @@ namespace Auth.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("status")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("InvoiceNum")
@@ -584,31 +586,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "c76ba92c-2e29-4934-adc1-fd4d2a9f5dc2",
+                            Id = "a6641622-2cbd-444c-b2db-e89a863cb170",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "299a4818-87b7-4fd4-af76-2dba6675144a",
+                            Id = "cb83e2e3-d65a-4143-9adc-a7a491f80cca",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "a5130439-ad2e-4761-82c7-55e3137eb634",
+                            Id = "1dbaf08c-a636-4b50-ad45-be0102d9b203",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "eb401576-03dc-47f4-8537-f9619c7e092c",
+                            Id = "5afd286e-6386-4660-9496-88c8f093df06",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "9e9a4f6f-864b-440e-ab96-a1d76fc0e4f5",
+                            Id = "84e0a274-5d70-4261-ba81-52758e3241e0",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });

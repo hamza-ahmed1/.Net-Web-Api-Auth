@@ -4,6 +4,7 @@ using Auth.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Auth.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831082054_FeeSchemaUpdated")]
+    partial class FeeSchemaUpdated
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,18 +37,18 @@ namespace Auth.Migrations
                     b.Property<Guid>("FeeTypeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("StudentId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("StudentId")
+                    b.Property<Guid>("StudentId1")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("AfId");
 
                     b.HasIndex("FeeTypeId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId1");
 
                     b.ToTable("ApplicableFees");
                 });
@@ -364,6 +367,9 @@ namespace Auth.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<bool>("status")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("InvoiceNum")
@@ -584,31 +590,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "c76ba92c-2e29-4934-adc1-fd4d2a9f5dc2",
+                            Id = "1aab365e-2ba3-4dd3-9544-8f92431eacc5",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "299a4818-87b7-4fd4-af76-2dba6675144a",
+                            Id = "06f70fab-c89e-422e-87b7-7d9f9f4c3c58",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "a5130439-ad2e-4761-82c7-55e3137eb634",
+                            Id = "bac307ec-a046-4643-8d86-66ed35141ba7",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "eb401576-03dc-47f4-8537-f9619c7e092c",
+                            Id = "a5ec2ba0-4487-4e92-a58e-b783db21a093",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "9e9a4f6f-864b-440e-ab96-a1d76fc0e4f5",
+                            Id = "a7383e51-3e60-41e2-8975-0b39c98daa03",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -784,7 +790,7 @@ namespace Auth.Migrations
 
                     b.HasOne("Auth.Model.Entities.Student", "Student")
                         .WithMany()
-                        .HasForeignKey("StudentId")
+                        .HasForeignKey("StudentId1")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
