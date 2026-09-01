@@ -4,53 +4,53 @@ API list — concise
 Base URL: {BASE_URL} (e.g. https://localhost:7179)
 
 Auth
-- POST {BASE_URL}/api/auth/register
-- POST {BASE_URL}/api/auth/login
-- POST {BASE_URL}/api/auth/refresh
-- POST {BASE_URL}/api/auth/logout (requires Authorization)
+- POST {BASE_URL}/api/auth/register     done using nextjs
+- POST {BASE_URL}/api/auth/login        done using nextjs
+- POST {BASE_URL}/api/auth/refresh      done using nextjs
+- POST {BASE_URL}/api/auth/logout (requires Authorization)            done using nextjs
 
 Roles
-- GET {BASE_URL}/api/roles
-- POST {BASE_URL}/api/roles
+- GET {BASE_URL}/api/roles                      done using nextjs
+- POST {BASE_URL}/api/roles                     done using nextjs
 
 Teachers (admin)
-- POST {BASE_URL}/api/admin/teachers
-- PUT {BASE_URL}/api/admin/teachers
-- GET {BASE_URL}/api/admin/teachers/{teacherId}
-- DELETE {BASE_URL}/api/admin/teachers/{teacherId}
-- POST {BASE_URL}/api/admin/teachers/restore/{teacherId}
-- POST {BASE_URL}/api/admin/teachers/promotion/{teacherId}
-- POST {BASE_URL}/api/admin/teachers/demotion/{teacherId}
+- POST {BASE_URL}/api/admin/teachers           done using nextjs
+- PUT {BASE_URL}/api/admin/teachers            done using nextjs
+- GET {BASE_URL}/api/admin/teachers/{teacherId}   done using nextjs
+- DELETE {BASE_URL}/api/admin/teachers/{teacherId}    done using nextjs
+- POST {BASE_URL}/api/admin/teachers/restore/{teacherId}   done using nextjs
+- POST {BASE_URL}/api/admin/teachers/promotion/{teacherId}  done using nextjs
+- POST {BASE_URL}/api/admin/teachers/demotion/{teacherId}   done using nextjs
 
 Students
-- POST {BASE_URL}/api/student
-- GET {BASE_URL}/api/student
-- GET {BASE_URL}/api/student/{studentId}
-- GET {BASE_URL}/api/student/{sectionId}
-- PUT {BASE_URL}/api/student/{studentId}
-- DELETE {BASE_URL}/api/student/{studentId}
-- GET {BASE_URL}/api/student/export
+- POST {BASE_URL}/api/student        done using nextjs
+- GET {BASE_URL}/api/student         done using nextjs
+- GET {BASE_URL}/api/student/{studentId}     done using nextjs
+- GET {BASE_URL}/api/student/{sectionId}     done using nextjs
+- PUT {BASE_URL}/api/student/{studentId}     done using nextjs
+- DELETE {BASE_URL}/api/student/{studentId}  done using nextjs
+- GET {BASE_URL}/api/student/export          done using nextjs
 
 Courses
-- POST {BASE_URL}/api/courses
-- GET {BASE_URL}/api/courses
-- GET {BASE_URL}/api/courses/{id}
-- PUT {BASE_URL}/api/courses/{id}
-- DELETE {BASE_URL}/api/courses/{id}
+- POST {BASE_URL}/api/courses     done using nextjs
+- GET {BASE_URL}/api/courses      done using nextjs
+- GET {BASE_URL}/api/courses/{id}   done using nextjs
+- PUT {BASE_URL}/api/courses/{id}   done using nextjs
+- DELETE {BASE_URL}/api/courses/{id}  done using nextjs
 
 Sections
-- POST {BASE_URL}/api/sections
-- GET {BASE_URL}/api/sections
-- GET {BASE_URL}/api/sections/{id}
-- PUT {BASE_URL}/api/sections/{id}
-- DELETE {BASE_URL}/api/sections/{id}
+- POST {BASE_URL}/api/sections    done using nextjs
+- GET {BASE_URL}/api/sections     done using nextjs
+- GET {BASE_URL}/api/sections/{id}   done using nextjs
+- PUT {BASE_URL}/api/sections/{id}   done using nextjs
+- DELETE {BASE_URL}/api/sections/{id}   done using nextjs
 
 Teacher-Section-Course Assignments
-- GET {BASE_URL}/api/TeacherSectionCourse
-- GET {BASE_URL}/api/TeacherSectionCourse/{id}
-- POST {BASE_URL}/api/TeacherSectionCourse
-- PUT {BASE_URL}/api/TeacherSectionCourse/{id}
-- DELETE {BASE_URL}/api/TeacherSectionCourse/{id}
+- GET {BASE_URL}/api/TeacherSectionCourse    done using nextjs
+- GET {BASE_URL}/api/TeacherSectionCourse/{id}   done using nextjs
+- POST {BASE_URL}/api/TeacherSectionCourse   done using nextjs
+- PUT {BASE_URL}/api/TeacherSectionCourse/{id}    done using nextjs
+- DELETE {BASE_URL}/api/TeacherSectionCourse/{id}  done using nextjs
 
 Attendance
 - POST {BASE_URL}/api/attendance
@@ -64,9 +64,9 @@ Attendance
 - GET {BASE_URL}/api/attendance/course/{teacherSectionCourseId}/summary?from={date}&to={date}
 
 Exams
-- POST {BASE_URL}/api/exam\
-- GET {BASE_URL}/api/exam
-- GET {BASE_URL}/api/exam/{examId}
+- POST {BASE_URL}/api/exam  done using nextjs
+- GET {BASE_URL}/api/exam   
+- GET {BASE_URL}/api/exam/{examId}    done by nextjs
 
 
 Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToken}
