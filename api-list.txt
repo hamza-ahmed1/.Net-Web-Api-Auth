@@ -69,6 +69,25 @@ Exams
 - GET {BASE_URL}/api/exam/{examId}    done by nextjs
 
 
+EXAM RESULT:
+Need :
+Exam Id: will be get after creating exam 
+studentId: will be get after creating student
+ http://localhost:5000/api/examresult/
+	req Body: 
+{
+  "examId": "f1fed6a5-f80c-4100-4192-08df07ed3563",
+  "studentId": "6d84c282-37c8-494b-3cce-08df073d671a",
+  "obtainMarks": 50.5,
+  "isAbsent": false,
+  "remarks": "Good performance"
+}
+
+Succful Result: 
+{
+    "examResultId": "b6d74bec-f4db-4224-a7ff-08df07ed613e"
+}
+
 Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToken}
 
 
