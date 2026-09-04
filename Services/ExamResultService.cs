@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Auth.Services
 {
-    public class ExamResultService:IExamResultService
+    public class ExamResultService : IExamResultService
     {
         private readonly ApplicationDbContext _context;
         public ExamResultService(ApplicationDbContext context)
@@ -15,31 +15,31 @@ namespace Auth.Services
             _context = context;
         }
         public async Task<IActionResult> CreateExamResult(ExamResultCreateDto dto)
+        {
+            // check validity of exam
+            var examExists = await _context.Exams.FirstOrDefaultAsync(e => e.ExamID == dto.ExamId);
+            if (examExists == null)
             {
-                // check validity of exam
-                var examExists = await _context.Exams.FirstOrDefaultAsync(e => e.ExamID == dto.ExamId);
-                if (examExists == null)
-                {
-                    return new BadRequestObjectResult($"Exam with id {dto.ExamId} does not exist.");
-                }
-                // check validity of student
-                var studentExists = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == dto.StudentId);
-                if (studentExists == null)
-                {
-                    return new BadRequestObjectResult($"Student with id {dto.StudentId} does not exist.");
-                }
-                var examResult = new ExamResult
-                {
-                    ExamId = dto.ExamId,
-                    StudentId = dto.StudentId,
-                    ObtainMarks = dto.ObtainMarks,
-                    IsAbsent = dto.IsAbsent,
-                    Remarks = dto.Remarks
-                };
-                await _context.ExamResults.AddAsync(examResult);
-                await _context.SaveChangesAsync();
-                return new OkObjectResult(new { examResultId = examResult.ExamResultId });
+                return new BadRequestObjectResult($"Exam with id {dto.ExamId} does not exist.");
             }
+            // check validity of student
+            var studentExists = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == dto.StudentId);
+            if (studentExists == null)
+            {
+                return new BadRequestObjectResult($"Student with id {dto.StudentId} does not exist.");
+            }
+            var examResult = new ExamResult
+            {
+                ExamId = dto.ExamId,
+                StudentId = dto.StudentId,
+                ObtainMarks = dto.ObtainMarks,
+                IsAbsent = dto.IsAbsent,
+                Remarks = dto.Remarks
+            };
+            await _context.ExamResults.AddAsync(examResult);
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(new { examResultId = examResult.ExamResultId });
+        }
         public async Task<IActionResult> UploadBulkResult(List<ExamResultCreateDto> dtos)
         {
             // Check if request is empty
@@ -378,6 +378,30 @@ namespace Auth.Services
             _context.ExamResults.Update(examResult);
             await _context.SaveChangesAsync();
             return new OkObjectResult(new { message = "Exam result updated successfully." });
+        }
+
+        public async Task<IActionResult> GetExamResultsByExamId(Guid examId)
+        {
+            var examResults = await _context.ExamResults
+                .Where(er => er.ExamId == examId)
+                .Include(er => er.Student)
+                .ThenInclude(s => s.User)
+                .ToListAsync();
+            if (!examResults.Any())
+            {
+                return new NotFoundObjectResult($"No exam results found for exam with id {examId}.");
+            }
+            var resultDtos = examResults.Select(er => new ExamResultDto
+            {
+                ExamResultId = er.ExamResultId,
+                ExamId = er.ExamId,
+                StudentId = er.StudentId,
+                ObtainMarks = er.ObtainMarks,
+                IsAbsent = er.IsAbsent,
+                Remarks = er.Remarks,
+                StudentName = er.Student.User.FullName
+            }).ToList();
+            return new OkObjectResult(resultDtos);
         }
     }
 }

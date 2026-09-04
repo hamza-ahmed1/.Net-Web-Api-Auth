@@ -100,6 +100,9 @@ On Success:
     "totalUpdated": 30
 }
 
+// get EXAM RESULT BY EXAM ID: GET
+http://localhost:5000/api/examresult/exam=53EAB6B9-B48D-461E-9C88-81147203179B
+
 Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToken}
 
 

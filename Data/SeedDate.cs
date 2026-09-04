@@ -2,14 +2,11 @@ using Auth.Data;
 using Auth.Model.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+
 
 namespace Auth.Data
 {
-    public static class SeedDate
+    public static class SeedDate    
     {
         public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {

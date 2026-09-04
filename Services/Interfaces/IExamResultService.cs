@@ -13,6 +13,7 @@ namespace Auth.Services.Interfaces
         public Task<IActionResult> UpdateExamResult(Guid examResultId, ExamResultCreateDto dto);
         public Task<IActionResult> GetExamResultById(Guid examResultId);
         public Task<IActionResult> GetExamsByStudentId(Guid studentId);
-        public Task DeleteExamResultById(Guid examResultId);    
+        public Task DeleteExamResultById(Guid examResultId);
+        public Task<IActionResult> GetExamResultsByExamId(Guid examId);
     }
 }

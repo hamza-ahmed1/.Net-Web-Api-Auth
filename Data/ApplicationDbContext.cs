@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection.Emit;
 namespace Auth.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
@@ -86,8 +85,7 @@ namespace Auth.Data
             builder.Entity<FeeType>().Property(f => f.Amount).HasColumnType("decimal(10,2)");
             builder.Entity<Invoice>().Property(i => i.TotalAmount).HasColumnType("decimal(10,2)");
             builder.Entity<Invoice>().Property(i => i.AmountPaid).HasColumnType("decimal(10,2)");
-            // InvoiceItem and Payment entities were removed/renamed in the updated fee model.
-            // Configure TransactionHistory amount precision instead.
+
             builder.Entity<TransactionHistory>().Property(t => t.Amount).HasColumnType("decimal(10,2)");
 
             // Fee:
