@@ -38,6 +38,7 @@
     {
         public Guid StudentId { get; set; }
 
+        public Guid EnrollmentId { get; set; }
         public string FullName { get; set; } = string.Empty;
 
     }

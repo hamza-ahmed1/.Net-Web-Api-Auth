@@ -221,7 +221,9 @@ namespace Auth.Services
                 .Select(s => new StudentMarksDto
                 {
                     StudentId = s.StudentId,
+                    EnrollmentId = s.StudentEnrollments.First(e => e.SectionId == sectionId).StudentEnrollmentId,
                     FullName = s.User.FullName
+                    
                 })
                 .ToListAsync();
 
