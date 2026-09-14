@@ -41,6 +41,9 @@ namespace Auth.Controllers
         [HttpGet("section/{sectionId}")]
         public async Task<IActionResult> GetStudentsBySectionId(Guid sectionId)
             => await _studentService.GetStudentBySectionId(sectionId);
+        [HttpGet("student-details/{sectionId}")]
+        public async Task<IActionResult> GetSectionDetails(Guid sectionId)
+            => await _studentService.GetstudentDetailsBySectionID(sectionId);
 
         [HttpGet("export")]
         public async Task<IActionResult> ExportStudentsToCsv()

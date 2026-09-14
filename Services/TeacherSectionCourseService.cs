@@ -9,12 +9,10 @@ namespace Auth.Services
     public class TeacherSectionCourseService: ITeacherSectionCourseService
     {
         private readonly ApplicationDbContext _context;
-
         public TeacherSectionCourseService(ApplicationDbContext context)
         {
             _context = context;
         }
-
         public async Task<IEnumerable<TeacherSectionCourseDto>> GetAllAsync()
         {
             return await _context.TeacherSectionCourses
@@ -24,7 +22,6 @@ namespace Auth.Services
                 .Select(x => MapToDto(x))
                 .ToListAsync();
         }
-
         public async Task<TeacherSectionCourseDto?> GetByIdAsync(Guid id)
         {
             var entity = await _context.TeacherSectionCourses
@@ -35,7 +32,6 @@ namespace Auth.Services
 
             return entity is null ? null : MapToDto(entity);
         }
-
         public async Task<IEnumerable<TeacherSectionCourseDto>> GetAllByTeacherIdAsync(Guid teacherId)
         {
             return await _context.TeacherSectionCourses
@@ -46,7 +42,6 @@ namespace Auth.Services
                 .Select(x => MapToDto(x))
                 .ToListAsync();
         }
-
         public async Task<TeacherSectionCourseDto> CreateAsync(TeacherSectionCourseCreateDto dto)
         {
             var entity = new TeacherSectionCourse
@@ -68,7 +63,6 @@ namespace Auth.Services
 
             return MapToDto(entity);
         }
-
         public async Task<TeacherSectionCourseDto?> UpdateAsync(Guid id, TeacherSectionCourseUpdateDto dto)
         {
             var entity = await _context.TeacherSectionCourses
@@ -92,7 +86,6 @@ namespace Auth.Services
 
             return MapToDto(entity);
         }
-
         public async Task<bool> DeleteAsync(Guid id)
         {
             var entity = await _context.TeacherSectionCourses
@@ -105,7 +98,6 @@ namespace Auth.Services
             await _context.SaveChangesAsync();
             return true;
         }
-
         private static TeacherSectionCourseDto MapToDto(TeacherSectionCourse entity)
         {
             return new TeacherSectionCourseDto

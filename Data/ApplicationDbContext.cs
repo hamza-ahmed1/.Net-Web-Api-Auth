@@ -83,16 +83,13 @@ namespace Auth.Data
 
             // Fee : Properties configuration for decimal precision
             builder.Entity<FeeType>().Property(f => f.Amount).HasColumnType("decimal(10,2)");
-            builder.Entity<Invoice>().Property(i => i.TotalAmount).HasColumnType("decimal(10,2)");
             builder.Entity<Invoice>().Property(i => i.AmountPaid).HasColumnType("decimal(10,2)");
 
             builder.Entity<TransactionHistory>().Property(t => t.Amount).HasColumnType("decimal(10,2)");
 
             // Fee:
             // Unique constraint on invoice number — prevents duplicate invoice numbers
-            builder.Entity<Invoice>()
-                .HasIndex(i => i.InvoiceNum)
-                .IsUnique();
+    
 
             // Prevent accidental cascade-delete chains across financial records —
             // deleting a student should NOT silently delete their payment history

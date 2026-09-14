@@ -9,12 +9,12 @@ namespace Auth.Model.Entities
         [Key]
         public Guid TransactionId { get; set; }
 
-        public long InvoiceId { get; set; }
-        public Invoice Invoice { get; set; }
+        public Guid InvoiceId { get; set; }
+        public Invoice? Invoice { get; set; }
 
         public decimal Amount { get; set; }
         public PaymentMode Mode { get; set; }
-        public string TransactionReference { get; set; }  
+        public string TransactionReference { get; set; } = string.Empty;
         public DateTime PaidAt { get; set; } = DateTime.UtcNow;
     }
 }

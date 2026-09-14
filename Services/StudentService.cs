@@ -229,6 +229,26 @@ namespace Auth.Services
 
             return new OkObjectResult(new { students });
         }
+
+        public async Task<IActionResult> GetstudentDetailsBySectionID(Guid sectionId)
+        {
+            var students = await _context.Students
+                .Where(s => s.StudentEnrollments.Any(e => e.SectionId == sectionId))
+                .Select(s => new StudentDto
+                {
+                    StudentId = s.StudentId,
+                    FullName = s.User.FullName,
+                    CNIC=s.CNIC,
+                    DateOfBirth=s.DateOfBirth,
+                    Email=s.User.Email,
+                    PhoneNumber=s.User.PhoneNumber,
+                   Section= s.StudentEnrollments.First(e => e.SectionId == sectionId).EnrolledSection.SectionName,
+
+                })
+                .ToListAsync();
+
+            return new OkObjectResult(new { students });
+        }
         // exports students to Excel
         public async Task<IActionResult> ExportStudentsToExcel()
         {

@@ -8,7 +8,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Org.BouncyCastle.Crypto.Generators;
 using System.Security.Claims;
+using System.Security.Cryptography;
 namespace Auth.Controllers
 {
     [ApiController]
@@ -16,16 +18,19 @@ namespace Auth.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailService _emailService;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly ApplicationDbContext _db;
 
-        public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService, ApplicationDbContext db, SignInManager<ApplicationUser> signInManager)
+        public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService, ApplicationDbContext db, SignInManager<ApplicationUser> signInManager, IEmailService emailService)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _db = db;
             _signInManager = signInManager;
+            _emailService = emailService;
+
         }
 
         [HttpPost("register")]
@@ -161,5 +166,75 @@ namespace Auth.Controllers
 
 
         }
+        [HttpPost("send-reset-code")]
+        public async Task<IActionResult> SendResetCode([FromBody] SendCodeRequestDTO request)
+        {
+            // 1. Locate the user in your database
+             var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+             if (user == null) return NotFound("User not found.");
+
+            // 2. Generate a secure, 6-digit numeric string
+            string sixDigitCode = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+
+            // 3. Save code & short lifespan (e.g., 15 minutes) to the user record
+             user.ResetCode = sixDigitCode;
+             user.ResetCodeExpiry = DateTime.UtcNow.AddMinutes(15);
+             await _db.SaveChangesAsync();
+
+            // 4. Construct a professional HTML verification template
+            string htmlMessage = $@"
+            <div style='font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;'>
+                <h3 style='color: #2D3748; margin-bottom: 5px;'>Eduverse Account Recovery</h3>
+                <p style='color: #4A5568; font-size: 14px;'>Use the verification code below to complete your password reset request. This code is active for 15 minutes.</p>
+                <div style='background-color: #EDF2F7; padding: 15px; border-radius: 6px; font-size: 28px; font-weight: bold; letter-spacing: 4px; text-align: center; color: #2B6CB0; margin: 20px 0;'>
+                    {sixDigitCode}
+                </div>
+                <p style='color: #718096; font-size: 12px;'>If you did not request this change, please safely disregard this notice.</p>
+            </div>";
+
+            try
+            {
+                await _emailService.SendEmailAsync(request.Email, "Your Eduverse Reset Code", htmlMessage);
+                return Ok("Verification code sent successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"SMTP Dispatch Error: {ex.Message}");
+            }
+        }
+
+        [HttpPost("verify-and-reset")]
+        public async Task<IActionResult> VerifyAndReset([FromBody] VerifyAndResetRequestDTO request)
+        {
+            // 1. Fetch user by email using UserManager
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null) return NotFound("User not found.");
+
+            // 2. Validate your custom 6-digit code matches and hasn't expired
+            if (user.ResetCode != request.VerificationCode || user.ResetCodeExpiry < DateTime.UtcNow)
+            {
+                return BadRequest("The code is incorrect or has expired.");
+            }
+
+            // 3. Generate an internal Identity token to satisfy the ResetPasswordAsync signature
+            var identityResetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            // 4. Reset the password (this automatically validates strength, hashes it, and saves it)
+            var result = await _userManager.ResetPasswordAsync(user, identityResetToken, request.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                // Return errors if the new password fails your identity rules (e.g., too short, missing uppercase)
+                return BadRequest(result.Errors);
+            }
+
+            // 5. Clean up your temporary custom code fields
+            user.ResetCode = string.Empty;
+            user.ResetCodeExpiry = null;
+            await _userManager.UpdateAsync(user); // Save the cleared code fields
+
+            return Ok("Your password has been changed successfully. You can now log in.");
+        }
     }
+
 }

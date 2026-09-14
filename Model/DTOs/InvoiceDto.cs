@@ -1,34 +1,37 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using Auth.Model.Entities;
 
-namespace Auth.Model.Entities
+namespace Auth.Model.DTOs
 {
-    public class Invoice
+    public class InvoiceDto
     {
-        [Key]
+    }
+
+    public class GenerateInvoiceRequest
+    {
+        public List<ApplicableFee> Fees { get; set; }
+
+        public string Month { get; set; }
+        public string Year { get; set; }
+        public DateTime DueDate { get; set; }
+    }
+
+
+    public class InvoiceDetailsDto
+    {
         public Guid Id { get; set; }
         public string InvoiceNum { get; set; } = string.Empty;
         public Guid StudentId { get; set; }
-        public Student? Student { get; set; }
-
+        public string StudentName { get; set; } = string.Empty;
         public Guid FeeTypeId { get; set; } = Guid.Empty;
-        public string FeeTypeName { get; set; }=string.Empty;
-        public FeeType? feeType { get; set; }
+        public string FeeTypeName { get; set; } = string.Empty;
         public decimal Amount { get; set; }
-
         public decimal AmountPaid { get; set; }
-
-        [NotMapped]
         public decimal AmountDue => Amount - AmountPaid;
-
-        [NotMapped]
         public bool Ispaid => AmountDue <= 0;
-
         public string Month { get; set; } = string.Empty;
         public string Year { get; set; } = string.Empty;
         public string Currency { get; set; } = "PKR";
         public DateTime DueDate { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public Guid UserId { get; set; }
     }
 }

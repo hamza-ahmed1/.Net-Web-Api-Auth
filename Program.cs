@@ -64,7 +64,10 @@ builder.Services.AddScoped<IExamTypeService,ExamTypeService>();
 builder.Services.AddScoped<IExamResultService, ExamResultService>();
 builder.Services.AddScoped<IFeeCategoryService, FeeCategoryService>();
 builder.Services.AddScoped<IFeeTypeService, FeeTypeService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IApplicableFeeService, ApplicableFeeService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 
 

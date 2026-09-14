@@ -43,31 +43,43 @@ namespace Auth.Data
             // Helper to create user if missing
             async Task<ApplicationUser> EnsureUser(string email, string fullName, string password, string role)
             {
-                var user = await userManager.FindByEmailAsync(email);
-                if (user != null)
-                    return user;
+                // Try to find existing user by email or username
+                var user = await userManager.FindByEmailAsync(email) ?? await userManager.FindByNameAsync(email);
 
-                user = new ApplicationUser
+                if (user == null)
                 {
-                    UserName = email,
-                    Email = email,
-                    EmailConfirmed = true,
-                    FullName = fullName
-                };
+                    user = new ApplicationUser
+                    {
+                        UserName = email,
+                        Email = email,
+                        EmailConfirmed = true,
+                        FullName = fullName
+                    };
 
-                var createResult = await userManager.CreateAsync(user, password);
-                if (!createResult.Succeeded)
-                {
-                    logger.LogWarning("Failed to create user {Email}: {Errors}", email, string.Join(";", createResult.Errors.Select(e => e.Description)));
-                    return user;
+                    var createResult = await userManager.CreateAsync(user, password);
+                    if (!createResult.Succeeded)
+                    {
+                        logger.LogWarning("Failed to create user {Email}: {Errors}", email, string.Join(";", createResult.Errors.Select(e => e.Description)));
+                        // return the user object (may not be persisted). Caller should check userManager.FindByEmailAsync if needed.
+                        return user;
+                    }
                 }
 
+                // Ensure the user is in the requested role
                 if (!string.IsNullOrEmpty(role))
                 {
-                    await userManager.AddToRoleAsync(user, role);
+                    if (!await userManager.IsInRoleAsync(user, role))
+                    {
+                        var addRoleResult = await userManager.AddToRoleAsync(user, role);
+                        if (!addRoleResult.Succeeded)
+                        {
+                            logger.LogWarning("Failed to add user {Email} to role {Role}: {Errors}", email, role, string.Join(';', addRoleResult.Errors.Select(e => e.Description)));
+                        }
+                    }
                 }
 
-                return user;
+                // Return the up-to-date user entity from the store
+                return await userManager.FindByIdAsync(user.Id);
             }
 
             // Create 3 sections if needed

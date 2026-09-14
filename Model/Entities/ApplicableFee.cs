@@ -8,10 +8,10 @@ namespace Auth.Model.Entities
         public Guid AfId { get; set; }
 
         public Guid StudentId { get; set; }
-        public Student Student { get; set; }
+        public Student? Student { get; set; }
 
         public Guid FeeTypeId { get; set; }
-        public FeeType FeeType { get; set; }
+        public FeeType? FeeType { get; set; }
 
         public FeeStatus Status { get; set; } = FeeStatus.Pending;
 
