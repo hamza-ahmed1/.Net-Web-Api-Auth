@@ -458,7 +458,19 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("Batch")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CNIC")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CampusName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CurrentAdress")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -467,6 +479,22 @@ namespace Auth.Migrations
 
                     b.Property<DateTime>("EnrollmentDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("FatherName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Gender")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MajorSubject")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PermanentAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
@@ -605,31 +633,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "b0ea7109-45f4-4e8d-80d8-cffe4424e39e",
+                            Id = "1ee54579-2df1-4976-bd49-09745ca0858e",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "470ea4e0-ed83-4618-a0e4-7c006f07225d",
+                            Id = "90b485d3-dc61-428a-a873-f38af616178d",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "440bbbca-da3f-4a93-b387-83d39b3c9698",
+                            Id = "9703508d-4859-4cd0-a9cc-7a35bd1d64aa",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "3b942a7e-835d-414f-a9f4-2f2958d20839",
+                            Id = "b61eb8ae-1e17-474f-8595-0b087fafc5fb",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "ab48dbb9-deb6-4959-8685-92f76a5265e5",
+                            Id = "13f77521-9ee7-4560-8233-6f0a84a44eb2",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });

@@ -45,6 +45,19 @@ namespace Auth.Controllers.Common
             }
             
         }
+        [HttpPost("bulk")]
+        public async Task<IActionResult> ApplyFeeBulk([FromBody] List<Model.DTOs.ApplicableFeeDto> applicableFeeDtos)
+        {
+            try
+            {
+                var result = await _applicableFeeService.ApplyFeeBulk(applicableFeeDtos);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetApplicableFeeById(Guid id)
         {
@@ -72,7 +85,19 @@ namespace Auth.Controllers.Common
                 throw new Exception(ex.Message);
             }
         }
-
+        // get bulk fees by section ID;
+        [HttpGet("section/{sectionId}")]
+        public async Task<IActionResult> GetbulkApplicableFeeBySectionId(Guid sectionId)
+        {
+            try
+            {
+                return await _applicableFeeService.GetbulkApplicableFeeBySectionId(sectionId);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+        }
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateApplicableFee(Guid id, [FromBody] Model.DTOs.ApplicableFeeDto applicableFeeDto)
         {

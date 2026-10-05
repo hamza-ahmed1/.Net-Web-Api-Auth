@@ -115,6 +115,8 @@ namespace Auth.Services
 
         public async Task<List<StudentDto>> GetAllStudents()
         {
+
+           
             return await _context.Students
                 .Include(s => s.User)
                 .Select(s => new StudentDto
@@ -131,11 +133,14 @@ namespace Auth.Services
                 .ToListAsync();
         }
 
-        public async Task<StudentDto?> GetStudentById(Guid studentId)
+        public async Task<StudentDto?> GetStudentById(string user_id)
         {
+            var id= _context.Students.FirstOrDefault(s=>s.UserId == user_id);
             var student = await _context.Students
                 .Include(s => s.User)
-                .FirstOrDefaultAsync(s => s.StudentId == studentId);
+                .Include(s => s.StudentEnrollments)
+                    .ThenInclude(se => se.EnrolledSection)
+                .FirstOrDefaultAsync(s => s.UserId == user_id);
 
             if (student == null) return null;
 
@@ -148,7 +153,8 @@ namespace Auth.Services
                 PhoneNumber = student.User.PhoneNumber,
                 DateOfBirth = student.DateOfBirth,
                 EnrollmentDate = student.EnrollmentDate,
-                CNIC = student.CNIC
+                CNIC = student.CNIC,
+                Section = student.StudentEnrollments.FirstOrDefault()?.EnrolledSection?.SectionName
             };
         }
 

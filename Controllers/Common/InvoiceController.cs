@@ -51,6 +51,29 @@ namespace Auth.Controllers.Common
             return result;
         }
 
+        [HttpPost("generate/bulk")] 
+
+        public async Task<IActionResult> GenerateBulkInvoice([FromBody] GenerateInvoiceRequest request)
+        {
+            if (request == null || request.Fees == null || !request.Fees.Any())
+            {
+                return BadRequest("No applicable fees provided.");
+            }
+            var userIdValue = _userManager.GetUserId(User);
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                return Unauthorized("Invalid or missing user identity.");
+            }
+            var result = await _invoiceService.GenerateBulkInvoice(
+                request.Fees,
+                request.Month,
+                request.Year,
+                request.DueDate,
+                userId
+            );
+            return result;
+        }
+
         [HttpGet("pending/{studentId}")]
         public async Task<IActionResult> GetPendingFees(Guid studentId)
         {

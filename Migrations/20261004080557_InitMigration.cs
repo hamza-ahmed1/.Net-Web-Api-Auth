@@ -246,7 +246,14 @@ namespace Auth.Migrations
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     DateOfBirth = table.Column<DateTime>(type: "datetime2", nullable: true),
                     EnrollmentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CNIC = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    CNIC = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Batch = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    MajorSubject = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CampusName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Gender = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FatherName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CurrentAdress = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    PermanentAddress = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -559,11 +566,11 @@ namespace Auth.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { "3b942a7e-835d-414f-a9f4-2f2958d20839", null, "HOD", "HOD" },
-                    { "440bbbca-da3f-4a93-b387-83d39b3c9698", null, "Student", "STUDENT" },
-                    { "470ea4e0-ed83-4618-a0e4-7c006f07225d", null, "Teacher", "TEACHER" },
-                    { "ab48dbb9-deb6-4959-8685-92f76a5265e5", null, "CourseCoordinator", "COURSECOORDINATOR" },
-                    { "b0ea7109-45f4-4e8d-80d8-cffe4424e39e", null, "Admin", "ADMIN" }
+                    { "13f77521-9ee7-4560-8233-6f0a84a44eb2", null, "CourseCoordinator", "COURSECOORDINATOR" },
+                    { "1ee54579-2df1-4976-bd49-09745ca0858e", null, "Admin", "ADMIN" },
+                    { "90b485d3-dc61-428a-a873-f38af616178d", null, "Teacher", "TEACHER" },
+                    { "9703508d-4859-4cd0-a9cc-7a35bd1d64aa", null, "Student", "STUDENT" },
+                    { "b61eb8ae-1e17-474f-8595-0b087fafc5fb", null, "HOD", "HOD" }
                 });
 
             migrationBuilder.CreateIndex(

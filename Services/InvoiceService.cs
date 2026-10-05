@@ -112,6 +112,61 @@ namespace Auth.Services
 
             return new OkObjectResult(invoices);
         }
+        public async Task<IActionResult> GenerateBulkInvoice(List<ApplicableFee> fees, string Month, string Year, DateTime DueDate, Guid User)
+
+        {
+            if (fees == null || !fees.Any())
+            {
+                return new BadRequestObjectResult("No applicable fees provided.");
+            }
+            var studentIds = fees.Select(f => f.StudentId).Distinct().ToList();
+            var students = await _context.Students
+                .Where(s => studentIds.Contains(s.StudentId))
+                .ToDictionaryAsync(s => s.StudentId);
+            var feeTypeIds = fees.Select(f => f.FeeTypeId).Distinct().ToList();
+            var feeTypes = await _context.FeeTypes
+                .Where(ft => feeTypeIds.Contains(ft.FeeTypeId))
+                .ToDictionaryAsync(ft => ft.FeeTypeId);
+            // Guard: make sure every requested FeeTypeId actually exists before building invoices
+            var missingFeeTypeIds = feeTypeIds.Where(id => !feeTypes.ContainsKey(id)).ToList();
+            if (missingFeeTypeIds.Any())
+            {
+                return new BadRequestObjectResult(
+                    $"Invalid fee type id(s): {string.Join(", ", missingFeeTypeIds)}");
+            }
+            var invoices = new List<Invoice>();
+            foreach (var studentId in studentIds)
+            {
+                if (!students.ContainsKey(studentId))
+                {
+                    return new NotFoundObjectResult($"Student with ID {studentId} not found.");
+                }
+                string invoiceNum = await GenerateInvoiceNumberAsync();
+                var studentFees = fees.Where(f => f.StudentId == studentId).ToList();
+                foreach (var applicableFee in studentFees)
+                {
+                    var feeType = feeTypes[applicableFee.FeeTypeId];
+                    invoices.Add(new Invoice
+                    {
+                        InvoiceNum = invoiceNum,
+                        StudentId = studentId,
+                        AmountPaid = 0,
+                        Amount = feeType.Amount,
+                        Currency = "PKR",
+                        DueDate = DueDate,
+                        UserId = User,
+                        FeeTypeId = applicableFee.FeeTypeId,
+                        FeeTypeName = feeType.Name,
+                        Month = Month,
+                        Year = Year,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+            _context.Invoices.AddRange(invoices);
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(invoices);
+        }
         private async Task<string> GenerateInvoiceNumberAsync()
         {
             var today = DateTime.UtcNow;

@@ -24,8 +24,10 @@ namespace Auth.Controllers
             => Ok(await _studentService.GetAllStudents());
 
         [HttpGet("{studentId}")]
-        public async Task<IActionResult> GetStudentById(Guid studentId)
+        public async Task<IActionResult> GetStudentById(string studentId)
         {
+           
+           
             var student = await _studentService.GetStudentById(studentId);
             return student == null ? NotFound("Student not found.") : Ok(student);
         }

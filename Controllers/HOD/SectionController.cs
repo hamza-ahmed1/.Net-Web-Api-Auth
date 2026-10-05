@@ -1,7 +1,6 @@
 ﻿using Auth.Model.DTOs.Section;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.HOD

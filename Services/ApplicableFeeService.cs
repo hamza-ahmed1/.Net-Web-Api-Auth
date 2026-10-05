@@ -30,6 +30,36 @@ namespace Auth.Services
 
         }
 
+        public async Task<IActionResult> ApplyFeeBulk(List<Model.DTOs.ApplicableFeeDto> applicableFeeDtos)
+        {
+            var applicableFees = new List<Model.Entities.ApplicableFee>();
+            foreach (var dto in applicableFeeDtos)
+            {
+                // Check if the combination of StudentId and FeeTypeId already exists
+                var existingApplicableFee = await _context.ApplicableFees
+                    .FirstOrDefaultAsync(af => af.StudentId == dto.StudentId && af.FeeTypeId == dto.FeeTypeId);
+                if (existingApplicableFee != null)
+                {
+                    // Skip this entry if it already exists
+                    continue;
+                }
+                // Create new applicable fee
+                var newApplicableFee = new Model.Entities.ApplicableFee
+                {
+                    StudentId = dto.StudentId,
+                    FeeTypeId = dto.FeeTypeId,
+                    Status = FeeStatus.Pending,
+                };
+                applicableFees.Add(newApplicableFee);
+            }
+            if (applicableFees.Count > 0)
+            {
+                await _context.ApplicableFees.AddRangeAsync(applicableFees);
+                await _context.SaveChangesAsync();
+            }
+            return new OkObjectResult(new { message = "Applicable fees applied successfully", IsSucceed = true });
+        }
+
 
         public async Task<IActionResult> GetAllApplicableFees()
         {
@@ -108,5 +138,33 @@ namespace Auth.Services
 
         }
 
+
+
+        // by section id
+        public async Task<IActionResult> GetbulkApplicableFeeBySectionId(Guid sectionId)
+        {
+            var applicableFees = await _context.ApplicableFees
+                .Include(af => af.Student)
+                .Include(af => af.FeeType)
+                .Include(af => af.Student.StudentEnrollments) // Include StudentEnrollments to access SectionId
+                .Where(af => af.Student.StudentEnrollments.Any(se => se.SectionId == sectionId))
+                .Select(af => new Model.DTOs.ApplicableFeeWithDetailsDto
+                {
+                    AfId = af.AfId,
+                    StudentName = af.Student.User.FullName,
+                    FeeTypeName = af.FeeType.Name,
+                    AcademicTerm = af.FeeType.AcademicTerm,
+                    Amount = af.FeeType.Amount,
+                    Status = af.Status,
+                    CreatedAt = af.CreatedAt
+                })
+                .ToListAsync();
+            if (applicableFees == null || applicableFees.Count == 0)
+            {
+                return new NotFoundObjectResult(new { message = "No applicable fees found for the section" });
+            }
+            return new OkObjectResult(applicableFees);
+        }
+
     }
- }
+}
