@@ -1,12 +1,14 @@
 ﻿using Auth.Model.DTOs.Section;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.HOD
 {
     [Route("api/sections")]
     [ApiController]
+    [Authorize]
     public class SectionController : ControllerBase
     {
         private readonly ISectionService _sectionService;

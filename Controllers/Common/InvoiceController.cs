@@ -2,6 +2,7 @@
 using Auth.Model.Entities;
 using Auth.Services;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -12,6 +13,7 @@ namespace Auth.Controllers.Common
 
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class InvoiceController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;

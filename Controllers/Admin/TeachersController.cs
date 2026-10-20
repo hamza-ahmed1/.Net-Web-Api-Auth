@@ -1,11 +1,13 @@
 ﻿using Auth.Model.DTOs.Teachers;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/teachers")]
+    [Authorize]
     public class TeachersController:ControllerBase
     {
 

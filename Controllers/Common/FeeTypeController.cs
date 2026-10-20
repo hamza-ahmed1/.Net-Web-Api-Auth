@@ -1,5 +1,6 @@
 ﻿using Auth.Model.DTOs;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace Auth.Controllers.Common
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class FeeTypeController : ControllerBase
     {
         private readonly IFeeTypeService _feeTypeService;

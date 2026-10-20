@@ -1,11 +1,13 @@
 ﻿using Auth.Model.DTOs.Student;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class StudentController : ControllerBase
     {
         private readonly IStudentService _studentService;

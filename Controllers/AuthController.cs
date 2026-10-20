@@ -15,6 +15,7 @@
     {
         [ApiController]
         [Route("api/auth")]
+        [Authorize]
         public class AuthController : ControllerBase
         {
             private readonly UserManager<ApplicationUser> _userManager;
@@ -34,6 +35,7 @@
             }
 
             [HttpPost("register")]
+            [AllowAnonymous]
             public async Task<IActionResult> Register(RegisterDto dto)
             {
                 var existingUser = await _userManager.FindByEmailAsync(dto.Email);
@@ -56,6 +58,7 @@
             }
 
             [HttpPost("login")]
+            [AllowAnonymous]
             public async Task<IActionResult> Login(LoginDto dto)
             {
                 var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -110,6 +113,7 @@
             }
 
             [HttpPost("refresh")]
+            [AllowAnonymous]
             public async Task<IActionResult> Refresh()
             {
                 var refreshToken = Request.Cookies["refreshToken"];
@@ -167,6 +171,7 @@
 
             }
             [HttpPost("send-reset-code")]
+            [AllowAnonymous]
             public async Task<IActionResult> SendResetCode([FromBody] SendCodeRequestDTO request)
             {
                 // 1. Locate the user in your database

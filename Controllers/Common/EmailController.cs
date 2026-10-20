@@ -1,4 +1,5 @@
 ﻿using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Auth.Model.DTOs;
@@ -7,6 +8,7 @@ namespace Auth.Controllers.Common
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class EmailController : ControllerBase
     {
         private readonly IEmailService _emailService;

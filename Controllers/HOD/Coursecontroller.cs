@@ -1,5 +1,6 @@
 ﻿using Auth.Model.DTOs.Courses;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,6 +8,7 @@ namespace Auth.Controllers.HOD
 {
     [ApiController]
     [Route("api/courses")]
+    [Authorize]
     public class CourseController : ControllerBase
     {
         private readonly ICourseService _courseService;

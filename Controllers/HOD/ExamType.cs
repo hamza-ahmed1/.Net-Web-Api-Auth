@@ -1,11 +1,13 @@
 ﻿using Auth.Model.DTOs;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.HOD
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ExamType : ControllerBase
     {
         private readonly IExamTypeService _examTypeService;

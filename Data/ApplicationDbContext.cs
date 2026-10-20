@@ -27,6 +27,9 @@ namespace Auth.Data
         public DbSet<ApplicableFee> ApplicableFees { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<TransactionHistory> TransactionHistories { get; set; }
+        public DbSet<Announcement> Announcements { get; set; }
+        public DbSet<AnnouncementRecipient> AnnouncementRecipients { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -140,7 +143,37 @@ namespace Auth.Data
             Name = "CourseCoordinator",
             NormalizedName = "COURSECOORDINATOR",
         }
-    );   
-        }
+            );
+
+            builder.Entity<Announcement>()
+                .Property(a => a.Title)
+                .HasMaxLength(200)
+                .IsRequired();
+
+        builder.Entity<Announcement>()
+            .Property(a => a.Body)
+            .IsRequired();
+
+        builder.Entity<Announcement>()
+            .Property(a => a.SenderRole)
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Entity<Announcement>()
+            .HasIndex(a => a.CreatedAt);
+
+        builder.Entity<Announcement>()
+            .HasMany(a => a.Recipients)
+            .WithOne(ar => ar.Announcement)
+            .HasForeignKey(ar => ar.AnnouncementId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<AnnouncementRecipient>()
+            .HasIndex(ar => new { ar.UserId, ar.IsRead });
+
+        builder.Entity<AnnouncementRecipient>()
+            .HasIndex(ar => new { ar.AnnouncementId, ar.UserId })
+            .IsUnique();
+    }
     }
 }

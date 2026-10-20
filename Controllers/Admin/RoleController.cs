@@ -1,10 +1,12 @@
 ﻿using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Auth.Controllers.Admin
 {
     [ApiController]
     [Route("api/roles")]
+    [Authorize]
     public class RoleController : ControllerBase
     {
 

@@ -1,6 +1,7 @@
 ﻿using Auth.Data;
 using Auth.Model.DTOs.Attendance;
 using Auth.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace Auth.Controllers.Teacher
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class AttendanceController : ControllerBase
     {
         private readonly IAttendanceService _attendanceService;
