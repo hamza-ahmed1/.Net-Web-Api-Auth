@@ -1,12 +1,10 @@
-using Auth.Data;
 using Auth.Model.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace Auth.Data
 {
-    public static class SeedDate    
+    public static class SeedDate
     {
         public static async Task InitializeAsync(IServiceProvider serviceProvider)
         {
@@ -20,7 +18,6 @@ namespace Auth.Data
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
             var context = services.GetRequiredService<ApplicationDbContext>();
 
-            // Ensure database is available
             try
             {
                 await context.Database.MigrateAsync();
@@ -30,7 +27,6 @@ namespace Auth.Data
                 logger.LogWarning(ex, "Database migrate failed during seeding — continuing if database exists.");
             }
 
-            // Ensure roles
             string[] roles = new[] { "Admin", "Teacher", "Student", "HOD", "CourseCoordinator" };
             foreach (var roleName in roles)
             {
@@ -40,10 +36,8 @@ namespace Auth.Data
                 }
             }
 
-            // Helper to create user if missing
             async Task<ApplicationUser> EnsureUser(string email, string fullName, string password, string role)
             {
-                // Try to find existing user by email or username
                 var user = await userManager.FindByEmailAsync(email) ?? await userManager.FindByNameAsync(email);
 
                 if (user == null)
@@ -60,142 +54,200 @@ namespace Auth.Data
                     if (!createResult.Succeeded)
                     {
                         logger.LogWarning("Failed to create user {Email}: {Errors}", email, string.Join(";", createResult.Errors.Select(e => e.Description)));
-                        // return the user object (may not be persisted). Caller should check userManager.FindByEmailAsync if needed.
                         return user;
                     }
                 }
-
-                // Ensure the user is in the requested role
-                if (!string.IsNullOrEmpty(role))
+                else if (string.IsNullOrWhiteSpace(user.FullName) || user.FullName != fullName)
                 {
-                    if (!await userManager.IsInRoleAsync(user, role))
+                    user.FullName = fullName;
+                    await userManager.UpdateAsync(user);
+                }
+
+                if (!string.IsNullOrEmpty(role) && !await userManager.IsInRoleAsync(user, role))
+                {
+                    var addRoleResult = await userManager.AddToRoleAsync(user, role);
+                    if (!addRoleResult.Succeeded)
                     {
-                        var addRoleResult = await userManager.AddToRoleAsync(user, role);
-                        if (!addRoleResult.Succeeded)
-                        {
-                            logger.LogWarning("Failed to add user {Email} to role {Role}: {Errors}", email, role, string.Join(';', addRoleResult.Errors.Select(e => e.Description)));
-                        }
+                        logger.LogWarning("Failed to add user {Email} to role {Role}: {Errors}", email, role, string.Join(';', addRoleResult.Errors.Select(e => e.Description)));
                     }
                 }
 
-                // Return the up-to-date user entity from the store
                 return await userManager.FindByIdAsync(user.Id);
             }
 
-            // Create 3 sections if needed
-            var desiredSectionCount = 3;
-            if (await context.Sections.CountAsync() < desiredSectionCount)
+            // XI / XII — Pre-Engineering (A–F); section E is Pre-Medical
+            var sectionDefs = new List<(string IntermediateClass, string SectionName, string Stream)>
             {
-                var sectionsToAdd = new List<Section>();
-                for (int i = 1; i <= desiredSectionCount; i++)
-                {
-                    var name = $"Section-{i}";
-                    if (!await context.Sections.AnyAsync(s => s.SectionName == name))
-                    {
-                        sectionsToAdd.Add(new Section
-                        {
-                            SectionId = Guid.NewGuid(),
-                            SectionName = name,
-                            IntermediateClass = "9th",
-                            StartDate = DateTime.UtcNow.AddMonths(-2)
-                        });
-                    }
-                }
-                if (sectionsToAdd.Count > 0)
-                {
-                    context.Sections.AddRange(sectionsToAdd);
-                    await context.SaveChangesAsync();
-                }
-            }
+                ("XI", "Pre-Engineering (A)", "Pre-Engineering"),
+                ("XI", "Pre-Engineering (B)", "Pre-Engineering"),
+                ("XI", "Pre-Engineering (C)", "Pre-Engineering"),
+                ("XI", "Pre-Engineering (D)", "Pre-Engineering"),
+                ("XI", "Pre-Medical (E)", "Pre-Medical"),
+                ("XI", "Pre-Engineering (F)", "Pre-Engineering"),
+                ("XII", "Pre-Engineering (A)", "Pre-Engineering"),
+                ("XII", "Pre-Engineering (B)", "Pre-Engineering"),
+                ("XII", "Pre-Engineering (C)", "Pre-Engineering"),
+                ("XII", "Pre-Engineering (D)", "Pre-Engineering"),
+                ("XII", "Pre-Medical (E)", "Pre-Medical"),
+                ("XII", "Pre-Engineering (F)", "Pre-Engineering"),
+            };
 
-            // Ensure at least 3 courses exist (used to assign teachers)
-            var desiredCourseCount = 3;
-            if (await context.Courses.CountAsync() < desiredCourseCount)
+            foreach (var (intermediateClass, sectionName, _) in sectionDefs)
             {
-                var coursesToAdd = new List<Course>();
-                for (int i = 1; i <= desiredCourseCount; i++)
+                if (!await context.Sections.AnyAsync(s => s.IntermediateClass == intermediateClass && s.SectionName == sectionName))
                 {
-                    var courseName = $"Course-{i}";
-                    if (!await context.Courses.AnyAsync(c => c.CourseName == courseName))
+                    context.Sections.Add(new Section
                     {
-                        coursesToAdd.Add(new Course
-                        {
-                            CourseId = Guid.NewGuid(),
-                            CourseName = courseName,
-                            CourseDescription = $"Sample course {i}",
-                            CourseDuration = 12
-                        });
-                    }
-                }
-                if (coursesToAdd.Count > 0)
-                {
-                    context.Courses.AddRange(coursesToAdd);
-                    await context.SaveChangesAsync();
-                }
-            }
-
-            // Create 5 teachers and persist
-            var desiredTeacherCount = 5;
-            var existingTeachers = await context.Teachers.ToListAsync();
-            for (int i = 1; i <= desiredTeacherCount; i++)
-            {
-                var email = $"teacher{i}@example.local";
-                var name = $"Teacher {i}";
-                var user = await EnsureUser(email, name, "Password@123", "Teacher");
-                if (!existingTeachers.Any(t => t.UserId == user.Id))
-                {
-                    var teacher = new Teacher
-                    {
-                        Teacher_Id = Guid.NewGuid(),
-                        CNIC = ($"{4200000000000 + i}").PadLeft(13, '0'),
-                        Qualification = "M.Ed",
-                        IdentificationNumber = $"TCHR-{1000 + i}",
-                        Department = "General",
-                        DateOfBirth = new DateTime(1980 + (i % 10), 1, 1),
-                        HireDate = DateTime.UtcNow.AddYears(-1 - i),
-                        Address = $"Address {i}",
-                        Salary = 40000m + (i * 1000),
-                        UserId = user.Id,
+                        SectionId = Guid.NewGuid(),
+                        SectionName = sectionName,
+                        IntermediateClass = intermediateClass,
+                        StartDate = DateTime.UtcNow.AddMonths(-3),
                         IsActive = true
-                    };
-                    context.Teachers.Add(teacher);
+                    });
                 }
             }
             await context.SaveChangesAsync();
 
-            // Create students: 10 per section
-            var sections = await context.Sections.ToListAsync();
-            var studentsToAdd = new List<Student>();
+            var courseDefs = new[]
+            {
+                ("Physics", "Intermediate Physics for Pre-Engineering and Pre-Medical streams", 12),
+                ("Chemistry", "Intermediate Chemistry covering organic, inorganic and physical chemistry", 12),
+                ("Mathematics", "Intermediate Mathematics for Pre-Engineering (algebra, calculus, trigonometry)", 12),
+                ("Biology", "Intermediate Biology for Pre-Medical (botany and zoology)", 12),
+                ("English", "Compulsory English for Intermediate Part I & II", 12),
+                ("Urdu", "Compulsory Urdu for Intermediate Part I & II", 12),
+                ("Computer Science", "Introduction to Computing and Programming", 12),
+                ("Pakistan Studies", "Pakistan Studies for Intermediate classes", 6),
+                ("Islamiyat", "Islamic Studies / Ethics for Intermediate classes", 6),
+            };
+
+            foreach (var (name, description, duration) in courseDefs)
+            {
+                if (!await context.Courses.AnyAsync(c => c.CourseName == name))
+                {
+                    context.Courses.Add(new Course
+                    {
+                        CourseId = Guid.NewGuid(),
+                        CourseName = name,
+                        CourseDescription = description,
+                        CourseDuration = duration
+                    });
+                }
+            }
+            await context.SaveChangesAsync();
+
+            var teacherDefs = new[]
+            {
+                new { Email = "ahmed.khan@lms.edu.pk", Name = "Dr. Muhammad Ahmed Khan", Cnic = "35202-1456789-1", Qual = "Ph.D Physics (PU)", Dept = "Science", IdNo = "TCHR-1001", Address = "House 42, Street 7, Gulberg III, Lahore", Salary = 95000m, Dob = new DateTime(1978, 3, 12), Subject = "Physics" },
+                new { Email = "fatima.siddiqui@lms.edu.pk", Name = "Prof. Fatima Zahra Siddiqui", Cnic = "42101-2345678-2", Qual = "M.Phil Chemistry (KU)", Dept = "Science", IdNo = "TCHR-1002", Address = "Flat 12-B, DHA Phase 5, Karachi", Salary = 88000m, Dob = new DateTime(1982, 7, 21), Subject = "Chemistry" },
+                new { Email = "ali.raza@lms.edu.pk", Name = "Sir Ali Hassan Raza", Cnic = "37405-9876543-3", Qual = "M.Sc Mathematics (QAU)", Dept = "Mathematics", IdNo = "TCHR-1003", Address = "House 18, G-11/2, Islamabad", Salary = 82000m, Dob = new DateTime(1985, 1, 9), Subject = "Mathematics" },
+                new { Email = "ayesha.noor@lms.edu.pk", Name = "Madam Ayesha Noor", Cnic = "33100-1122334-4", Qual = "M.Phil Biology (UAF)", Dept = "Science", IdNo = "TCHR-1004", Address = "B-204, Canal View, Faisalabad", Salary = 80000m, Dob = new DateTime(1987, 11, 4), Subject = "Biology" },
+                new { Email = "usman.malik@lms.edu.pk", Name = "Mr. Usman Malik", Cnic = "61101-5566778-5", Qual = "M.A English Literature (NUML)", Dept = "Languages", IdNo = "TCHR-1005", Address = "House 9, Satellite Town, Rawalpindi", Salary = 72000m, Dob = new DateTime(1984, 5, 18), Subject = "English" },
+                new { Email = "sana.malik@lms.edu.pk", Name = "Ms. Sana Malik", Cnic = "35202-7788990-6", Qual = "M.A Urdu (GCU)", Dept = "Languages", IdNo = "TCHR-1006", Address = "House 55, Model Town Block C, Lahore", Salary = 70000m, Dob = new DateTime(1990, 9, 27), Subject = "Urdu" },
+                new { Email = "bilal.sheikh@lms.edu.pk", Name = "Engr. Bilal Ahmed Sheikh", Cnic = "42201-3344556-7", Qual = "MS Computer Science (FAST-NU)", Dept = "Computer Science", IdNo = "TCHR-1007", Address = "House 3, Gulshan-e-Iqbal Block 13-D, Karachi", Salary = 85000m, Dob = new DateTime(1988, 2, 14), Subject = "Computer Science" },
+                new { Email = "imran.qureshi@lms.edu.pk", Name = "Mr. Imran Qureshi", Cnic = "31303-6677889-8", Qual = "M.A Pakistan Studies (IUB)", Dept = "Social Sciences", IdNo = "TCHR-1008", Address = "House 21, Satellite Town, Bahawalpur", Salary = 68000m, Dob = new DateTime(1983, 12, 2), Subject = "Pakistan Studies" },
+                new { Email = "zainab.hassan@lms.edu.pk", Name = "Madam Zainab Hassan", Cnic = "35202-9900112-9", Qual = "M.A Islamic Studies (PU)", Dept = "Islamic Studies", IdNo = "TCHR-1009", Address = "House 11, Johar Town Phase 1, Lahore", Salary = 67000m, Dob = new DateTime(1986, 6, 30), Subject = "Islamiyat" },
+                new { Email = "hamza.tariq@lms.edu.pk", Name = "Sir Hamza Tariq", Cnic = "38403-2233445-1", Qual = "M.Sc Physics (UET Taxila)", Dept = "Science", IdNo = "TCHR-1010", Address = "House 67, Civil Lines, Sargodha", Salary = 78000m, Dob = new DateTime(1991, 4, 8), Subject = "Physics" },
+            };
+
+            for (var ti = 0; ti < teacherDefs.Length; ti++)
+            {
+                var def = teacherDefs[ti];
+                var user = await EnsureUser(def.Email, def.Name, "Password@123", "Teacher");
+                if (!await context.Teachers.AnyAsync(t => t.UserId == user.Id))
+                {
+                    context.Teachers.Add(new Teacher
+                    {
+                        Teacher_Id = Guid.NewGuid(),
+                        CNIC = def.Cnic,
+                        Qualification = def.Qual,
+                        IdentificationNumber = def.IdNo,
+                        Department = def.Dept,
+                        DateOfBirth = def.Dob,
+                        HireDate = DateTime.UtcNow.AddYears(-(2 + (ti % 5))),
+                        Address = def.Address,
+                        Salary = def.Salary,
+                        UserId = user.Id,
+                        IsActive = true
+                    });
+                }
+            }
+            await context.SaveChangesAsync();
+
+            var maleFirst = new[] { "Ahmed", "Ali", "Hassan", "Usman", "Bilal", "Hamza", "Omar", "Zain", "Ibrahim", "Yousuf", "Saad", "Taha", "Rayyan", "Daniyal", "Fahad" };
+            var femaleFirst = new[] { "Ayesha", "Fatima", "Sana", "Zainab", "Maryam", "Hira", "Noor", "Laiba", "Areeba", "Mahnoor", "Iqra", "Hafsa", "Eman", "Alina", "Rida" };
+            var lastNames = new[] { "Khan", "Malik", "Ahmed", "Raza", "Siddiqui", "Qureshi", "Sheikh", "Butt", "Chaudhry", "Hashmi", "Mirza", "Javed", "Rehman", "Abbas", "Nawaz" };
+
+            var sectionKeys = sectionDefs
+                .Select(d => (d.IntermediateClass, d.SectionName))
+                .ToHashSet();
+            var allSections = await context.Sections.ToListAsync();
+            var sections = allSections
+                .Where(s => sectionKeys.Contains((s.IntermediateClass, s.SectionName)))
+                .ToList();
+
+            var fatherFirst = new[] { "Muhammad", "Abdul", "Ghulam", "Syed", "Chaudhry", "Malik", "Haji", "Rana" };
+            var cities = new[]
+            {
+                ("Gulberg III, Lahore", "Lahore"),
+                ("Model Town, Lahore", "Lahore"),
+                ("DHA Phase 5, Karachi", "Karachi"),
+                ("Gulshan-e-Iqbal, Karachi", "Karachi"),
+                ("G-11/2, Islamabad", "Islamabad"),
+                ("Satellite Town, Rawalpindi", "Rawalpindi"),
+                ("Canal View, Faisalabad", "Faisalabad"),
+                ("Civil Lines, Multan", "Multan"),
+            };
+
+            var studentsPerSection = 8;
+            var nameIndex = 0;
             foreach (var section in sections)
             {
-                // count existing active enrollments for this section
+                var stream = section.SectionName.StartsWith("Pre-Medical", StringComparison.OrdinalIgnoreCase)
+                    ? "Pre-Medical"
+                    : "Pre-Engineering";
                 var enrolledCount = await context.StudentEnrollments.CountAsync(se => se.SectionId == section.SectionId && se.IsActive);
-                var toCreate = Math.Max(0, 10 - enrolledCount);
+                var toCreate = Math.Max(0, studentsPerSection - enrolledCount);
+
                 for (int s = 1; s <= toCreate; s++)
                 {
-                    var studentIndex = Guid.NewGuid();
-                    var email = $"student_{section.SectionName}_{s}@example.local";
-                    var name = $"Student {section.SectionName}-{s}";
-                    var user = await EnsureUser(email, name, "Password@123", "Student");
+                    nameIndex++;
+                    var isFemale = nameIndex % 2 == 0;
+                    var first = isFemale
+                        ? femaleFirst[nameIndex % femaleFirst.Length]
+                        : maleFirst[nameIndex % maleFirst.Length];
+                    var last = lastNames[(nameIndex * 3) % lastNames.Length];
+                    var fullName = $"{first} {last}";
+                    var sectionKey = $"{section.IntermediateClass}{section.SectionName.Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "")}";
+                    var email = $"{first.ToLower()}.{last.ToLower()}.{sectionKey.ToLower()}{s}@student.lms.edu.pk";
+                    var (area, city) = cities[nameIndex % cities.Length];
+                    var fatherName = $"{fatherFirst[nameIndex % fatherFirst.Length]} {last}";
 
-                    // create student domain entity if not exists
+                    var user = await EnsureUser(email, fullName, "Password@123", "Student");
+
                     var student = await context.Students.FirstOrDefaultAsync(st => st.UserId == user.Id);
                     if (student == null)
                     {
+                        var cnicSerial = 1000000 + nameIndex;
                         student = new Student
                         {
                             StudentId = Guid.NewGuid(),
                             UserId = user.Id,
-                            DateOfBirth = DateTime.UtcNow.AddYears(-14).AddDays(s),
-                            EnrollmentDate = DateTime.UtcNow,
-                            CNIC = ($"{1000000000000 + new Random().Next(1000000)}")
+                            DateOfBirth = DateTime.UtcNow.AddYears(-(16 + (nameIndex % 3))).AddDays(nameIndex),
+                            EnrollmentDate = DateTime.UtcNow.AddMonths(-2),
+                            CNIC = $"35202-{cnicSerial:D7}-{(nameIndex % 9) + 1}",
+                            Batch = section.IntermediateClass == "XII" ? "2024-2026" : "2025-2027",
+                            MajorSubject = stream,
+                            CampusName = "Main Campus",
+                            Gender = isFemale ? "Female" : "Male",
+                            FatherName = fatherName,
+                            CurrentAdress = $"House {(nameIndex % 90) + 1}, {area}",
+                            PermanentAddress = $"House {(nameIndex % 90) + 1}, {area}, {city}"
                         };
-                        studentsToAdd.Add(student);
                         context.Students.Add(student);
                         await context.SaveChangesAsync();
                     }
 
-                    // create enrollment if missing
                     if (!await context.StudentEnrollments.AnyAsync(se => se.StudentId == student.StudentId && se.SectionId == section.SectionId && se.IsActive))
                     {
                         context.StudentEnrollments.Add(new StudentEnrollments
@@ -203,7 +255,7 @@ namespace Auth.Data
                             StudentEnrollmentId = Guid.NewGuid(),
                             StudentId = student.StudentId,
                             SectionId = section.SectionId,
-                            EnrolledDate = DateTime.UtcNow,
+                            EnrolledDate = DateTime.UtcNow.AddMonths(-2),
                             IsActive = true
                         });
                         await context.SaveChangesAsync();
@@ -211,34 +263,103 @@ namespace Auth.Data
                 }
             }
 
-            // Assign teachers to sections and courses (TeacherSectionCourse)
-            var teachers = await context.Teachers.ToListAsync();
+            // Assign each teacher to their subject across relevant sections
+            var teachers = await context.Teachers.Include(t => t.User).ToListAsync();
             var courses = await context.Courses.ToListAsync();
-            int tIndex = 0;
-            foreach (var teacher in teachers)
-            {
-                var targetSection = sections[tIndex % sections.Count];
-                var targetCourse = courses[tIndex % courses.Count];
-                // Avoid duplicate assignment
-                if (!await context.TeacherSectionCourses.AnyAsync(tsc => tsc.TeacherId == teacher.Teacher_Id && tsc.SectionId == targetSection.SectionId && tsc.CourseId == targetCourse.CourseId))
-                {
-                    context.TeacherSectionCourses.Add(new TeacherSectionCourse
-                    {
-                        TeacherSectionCourseId = Guid.NewGuid(),
-                        TeacherId = teacher.Teacher_Id,
-                        SectionId = targetSection.SectionId,
-                        CourseId = targetCourse.CourseId,
-                        AssignedDate = DateTime.UtcNow,
-                        IsActive = true
-                    });
-                }
-                tIndex++;
-            }
-            await context.SaveChangesAsync();
+            var teacherByEmail = teachers.ToDictionary(t => t.User.Email!, t => t, StringComparer.OrdinalIgnoreCase);
 
-            logger.LogInformation("Seed data initialization completed.");
-            // --- Seed ExamTypes and Exams ---
-            // Ensure common exam types exist
+            string FormatSectionLabel(Section section) => $"{section.IntermediateClass} - {section.SectionName}";
+
+            async Task EnsureAssignment(Teacher teacher, Section section, Course course)
+            {
+                if (await context.TeacherSectionCourses.AnyAsync(tsc =>
+                        tsc.TeacherId == teacher.Teacher_Id &&
+                        tsc.SectionId == section.SectionId &&
+                        tsc.CourseId == course.CourseId))
+                {
+                    return;
+                }
+
+                context.TeacherSectionCourses.Add(new TeacherSectionCourse
+                {
+                    TeacherSectionCourseId = Guid.NewGuid(),
+                    TeacherId = teacher.Teacher_Id,
+                    SectionId = section.SectionId,
+                    CourseId = course.CourseId,
+                    AssignedDate = DateTime.UtcNow,
+                    IsActive = true
+                });
+            }
+
+            Course? FindCourse(string name) => courses.FirstOrDefault(c => c.CourseName == name);
+
+            var preEngSections = sections.Where(s => s.SectionName.StartsWith("Pre-Engineering", StringComparison.OrdinalIgnoreCase)).ToList();
+            var preMedSections = sections.Where(s => s.SectionName.StartsWith("Pre-Medical", StringComparison.OrdinalIgnoreCase)).ToList();
+            var allTargetSections = sections.ToList();
+
+            // Physics — split XI/XII Pre-Eng between two teachers; both Pre-Med get Physics too
+            if (teacherByEmail.TryGetValue("ahmed.khan@lms.edu.pk", out var physics1) && FindCourse("Physics") is { } physics)
+            {
+                foreach (var section in preEngSections.Where(s => s.IntermediateClass == "XI").Concat(preMedSections))
+                    await EnsureAssignment(physics1, section, physics);
+            }
+            if (teacherByEmail.TryGetValue("hamza.tariq@lms.edu.pk", out var physics2) && FindCourse("Physics") is { } physicsB)
+            {
+                foreach (var section in preEngSections.Where(s => s.IntermediateClass == "XII"))
+                    await EnsureAssignment(physics2, section, physicsB);
+            }
+
+            if (teacherByEmail.TryGetValue("fatima.siddiqui@lms.edu.pk", out var chemTeacher) && FindCourse("Chemistry") is { } chemistry)
+            {
+                foreach (var section in allTargetSections)
+                    await EnsureAssignment(chemTeacher, section, chemistry);
+            }
+
+            if (teacherByEmail.TryGetValue("ali.raza@lms.edu.pk", out var mathTeacher) && FindCourse("Mathematics") is { } mathematics)
+            {
+                foreach (var section in preEngSections)
+                    await EnsureAssignment(mathTeacher, section, mathematics);
+            }
+
+            if (teacherByEmail.TryGetValue("ayesha.noor@lms.edu.pk", out var bioTeacher) && FindCourse("Biology") is { } biology)
+            {
+                foreach (var section in preMedSections)
+                    await EnsureAssignment(bioTeacher, section, biology);
+            }
+
+            if (teacherByEmail.TryGetValue("usman.malik@lms.edu.pk", out var engTeacher) && FindCourse("English") is { } english)
+            {
+                foreach (var section in allTargetSections)
+                    await EnsureAssignment(engTeacher, section, english);
+            }
+
+            if (teacherByEmail.TryGetValue("sana.malik@lms.edu.pk", out var urduTeacher) && FindCourse("Urdu") is { } urdu)
+            {
+                foreach (var section in allTargetSections)
+                    await EnsureAssignment(urduTeacher, section, urdu);
+            }
+
+            if (teacherByEmail.TryGetValue("bilal.sheikh@lms.edu.pk", out var csTeacher) && FindCourse("Computer Science") is { } cs)
+            {
+                foreach (var section in preEngSections.Where((_, i) => i % 2 == 0))
+                    await EnsureAssignment(csTeacher, section, cs);
+            }
+
+            if (teacherByEmail.TryGetValue("imran.qureshi@lms.edu.pk", out var pstTeacher) && FindCourse("Pakistan Studies") is { } pst)
+            {
+                foreach (var section in allTargetSections)
+                    await EnsureAssignment(pstTeacher, section, pst);
+            }
+
+            if (teacherByEmail.TryGetValue("zainab.hassan@lms.edu.pk", out var islTeacher) && FindCourse("Islamiyat") is { } islamiyat)
+            {
+                foreach (var section in allTargetSections)
+                    await EnsureAssignment(islTeacher, section, islamiyat);
+            }
+
+            await context.SaveChangesAsync();
+            logger.LogInformation("Seed data initialization completed with Pakistani Intermediate sections ({Count} sections).", sections.Count);
+
             var examTypes = new[] { "Midterm", "Final", "Quiz" };
             var createdExamTypes = new List<ExamType>();
             foreach (var t in examTypes)
@@ -253,18 +374,22 @@ namespace Auth.Data
                 createdExamTypes.Add(existing);
             }
 
-            // Create at least one exam per TeacherSectionCourse if missing
-            var tscList = await context.TeacherSectionCourses.ToListAsync();
+            var tscList = await context.TeacherSectionCourses
+                .Include(tsc => tsc.Course)
+                .Include(tsc => tsc.Section)
+                .ToListAsync();
+
             foreach (var tsc in tscList)
             {
-                // if any exam exists for this TSC, skip
                 if (await context.Exams.AnyAsync(e => e.TeacherSectionCourseId == tsc.TeacherSectionCourseId))
                     continue;
 
-                var exam = new Exam
+                var courseName = tsc.Course?.CourseName ?? "Course";
+                var sectionLabel = tsc.Section != null ? FormatSectionLabel(tsc.Section) : "Section";
+                context.Exams.Add(new Exam
                 {
                     ExamID = Guid.NewGuid(),
-                    Title = $"{createdExamTypes.First().Type} for {tsc.CourseId}",
+                    Title = $"{createdExamTypes.First().Type} — {courseName} ({sectionLabel})",
                     ExamTypeId = createdExamTypes.First().ExamTypeId,
                     TotalMarks = 100,
                     IsPublished = false,
@@ -272,8 +397,7 @@ namespace Auth.Data
                     TeacherSectionCourseId = tsc.TeacherSectionCourseId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
-                };
-                context.Exams.Add(exam);
+                });
             }
             await context.SaveChangesAsync();
         }

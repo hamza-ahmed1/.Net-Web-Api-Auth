@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Auth.Migrations
 {
     /// <inheritdoc />
-    public partial class InitMigration : Migration
+    public partial class initmigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -129,6 +129,31 @@ namespace Auth.Migrations
                         principalTable: "AspNetRoles",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Announcements",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Priority = table.Column<int>(type: "int", nullable: false),
+                    Audience = table.Column<int>(type: "int", nullable: false),
+                    SenderId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    SenderRole = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Announcements", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Announcements_AspNetUsers_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -316,6 +341,33 @@ namespace Auth.Migrations
                         principalTable: "FeeCategories",
                         principalColumn: "FeeCategoryId",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AnnouncementRecipients",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AnnouncementId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    IsRead = table.Column<bool>(type: "bit", nullable: false),
+                    ReadAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AnnouncementRecipients", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AnnouncementRecipients_Announcements_AnnouncementId",
+                        column: x => x.AnnouncementId,
+                        principalTable: "Announcements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_AnnouncementRecipients_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -566,12 +618,33 @@ namespace Auth.Migrations
                 columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
                 values: new object[,]
                 {
-                    { "13f77521-9ee7-4560-8233-6f0a84a44eb2", null, "CourseCoordinator", "COURSECOORDINATOR" },
-                    { "1ee54579-2df1-4976-bd49-09745ca0858e", null, "Admin", "ADMIN" },
-                    { "90b485d3-dc61-428a-a873-f38af616178d", null, "Teacher", "TEACHER" },
-                    { "9703508d-4859-4cd0-a9cc-7a35bd1d64aa", null, "Student", "STUDENT" },
-                    { "b61eb8ae-1e17-474f-8595-0b087fafc5fb", null, "HOD", "HOD" }
+                    { "020948e0-89af-47f4-8390-f5b981c5efeb", null, "Admin", "ADMIN" },
+                    { "2f26aa8b-039c-41e1-b5cf-c45faea9bc2e", null, "HOD", "HOD" },
+                    { "6573eb0c-a0a9-44c4-ab3e-dd34e27118bb", null, "Student", "STUDENT" },
+                    { "c25e4412-77d1-45a6-ad10-9fc3d536f7ba", null, "CourseCoordinator", "COURSECOORDINATOR" },
+                    { "df455b3b-6bad-47b5-ae5a-731c689cb65c", null, "Teacher", "TEACHER" }
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AnnouncementRecipients_AnnouncementId_UserId",
+                table: "AnnouncementRecipients",
+                columns: new[] { "AnnouncementId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AnnouncementRecipients_UserId_IsRead",
+                table: "AnnouncementRecipients",
+                columns: new[] { "UserId", "IsRead" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Announcements_CreatedAt",
+                table: "Announcements",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Announcements_SenderId",
+                table: "Announcements",
+                column: "SenderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ApplicableFees_FeeTypeId",
@@ -727,6 +800,9 @@ namespace Auth.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "AnnouncementRecipients");
+
+            migrationBuilder.DropTable(
                 name: "ApplicableFees");
 
             migrationBuilder.DropTable(
@@ -755,6 +831,9 @@ namespace Auth.Migrations
 
             migrationBuilder.DropTable(
                 name: "TransactionHistories");
+
+            migrationBuilder.DropTable(
+                name: "Announcements");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

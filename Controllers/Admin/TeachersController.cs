@@ -44,9 +44,15 @@ namespace Auth.Controllers.Admin
         {
             try
             {
+                var teachers = await _teacherService.GetAllTechers();
+                var match = teachers.FirstOrDefault(t => t.Teacher_id == teacherId);
+                if (match != null)
+                    return match;
+
                 var result = await _teacherService.GetTeacherByID(teacherId);
                 return new TeacherDetailDto
                 {
+                    Teacher_id = result.Teacher_Id,
                     Address = result.Address,
                     Fullname = result.User.FullName,
                     IsActive = result.IsActive,

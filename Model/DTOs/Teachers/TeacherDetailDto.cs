@@ -42,5 +42,16 @@ namespace Auth.Model.DTOs.Teachers
 
         public bool IsActive { get; set; } = true;
 
+        /// <summary>Primary role for display/actions (e.g. Teacher, HOD).</summary>
+        public string Role { get; set; } = "Teacher";
+
+        /// <summary>Distinct section labels, e.g. "XI - Pre-Engineering (A)".</summary>
+        public List<string> AssignedSections { get; set; } = new();
+
+        /// <summary>Distinct course names assigned to this teacher.</summary>
+        public List<string> AssignedCourses { get; set; } = new();
+
+        /// <summary>Course · section pairs for display, e.g. "Physics · XI - Pre-Engineering (A)".</summary>
+        public List<string> Assignments { get; set; } = new();
     }
 }

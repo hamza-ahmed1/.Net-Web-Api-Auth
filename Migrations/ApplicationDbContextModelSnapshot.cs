@@ -22,6 +22,80 @@ namespace Auth.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Auth.Model.Entities.Announcement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Audience")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("Announcements");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.AnnouncementRecipient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AnnouncementId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnnouncementId", "UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("AnnouncementRecipients");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.ApplicableFee", b =>
                 {
                     b.Property<Guid>("AfId")
@@ -633,31 +707,31 @@ namespace Auth.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "1ee54579-2df1-4976-bd49-09745ca0858e",
+                            Id = "020948e0-89af-47f4-8390-f5b981c5efeb",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
-                            Id = "90b485d3-dc61-428a-a873-f38af616178d",
+                            Id = "df455b3b-6bad-47b5-ae5a-731c689cb65c",
                             Name = "Teacher",
                             NormalizedName = "TEACHER"
                         },
                         new
                         {
-                            Id = "9703508d-4859-4cd0-a9cc-7a35bd1d64aa",
+                            Id = "6573eb0c-a0a9-44c4-ab3e-dd34e27118bb",
                             Name = "Student",
                             NormalizedName = "STUDENT"
                         },
                         new
                         {
-                            Id = "b61eb8ae-1e17-474f-8595-0b087fafc5fb",
+                            Id = "2f26aa8b-039c-41e1-b5cf-c45faea9bc2e",
                             Name = "HOD",
                             NormalizedName = "HOD"
                         },
                         new
                         {
-                            Id = "13f77521-9ee7-4560-8233-6f0a84a44eb2",
+                            Id = "c25e4412-77d1-45a6-ad10-9fc3d536f7ba",
                             Name = "CourseCoordinator",
                             NormalizedName = "COURSECOORDINATOR"
                         });
@@ -821,6 +895,36 @@ namespace Auth.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Teachers");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Announcement", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.AnnouncementRecipient", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.Announcement", "Announcement")
+                        .WithMany("Recipients")
+                        .HasForeignKey("AnnouncementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Auth.Model.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Announcement");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.ApplicableFee", b =>
@@ -1074,6 +1178,11 @@ namespace Auth.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Announcement", b =>
+                {
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.ApplicationUser", b =>

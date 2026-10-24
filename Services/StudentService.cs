@@ -113,10 +113,16 @@ namespace Auth.Services
             });
         }
 
+        private static string FormatSectionLabel(Section? section)
+        {
+            if (section == null) return string.Empty;
+            if (string.IsNullOrWhiteSpace(section.IntermediateClass))
+                return section.SectionName;
+            return $"{section.IntermediateClass} - {section.SectionName}";
+        }
+
         public async Task<List<StudentDto>> GetAllStudents()
         {
-
-           
             return await _context.Students
                 .Include(s => s.User)
                 .Select(s => new StudentDto
@@ -128,21 +134,43 @@ namespace Auth.Services
                     PhoneNumber = s.User.PhoneNumber,
                     DateOfBirth = s.DateOfBirth,
                     EnrollmentDate = s.EnrollmentDate,
-                    CNIC = s.CNIC
+                    CNIC = s.CNIC,
+                    SectionId = s.StudentEnrollments
+                        .Where(e => e.IsActive)
+                        .Select(e => (Guid?)e.SectionId)
+                        .FirstOrDefault(),
+                    Section = s.StudentEnrollments
+                        .Where(e => e.IsActive && e.EnrolledSection != null)
+                        .Select(e => e.EnrolledSection!.IntermediateClass + " - " + e.EnrolledSection.SectionName)
+                        .FirstOrDefault() ?? string.Empty
                 })
                 .ToListAsync();
         }
 
-        public async Task<StudentDto?> GetStudentById(string user_id)
+        public async Task<StudentDto?> GetStudentById(string studentId)
         {
-            var id= _context.Students.FirstOrDefault(s=>s.UserId == user_id);
-            var student = await _context.Students
-                .Include(s => s.User)
-                .Include(s => s.StudentEnrollments)
-                    .ThenInclude(se => se.EnrolledSection)
-                .FirstOrDefaultAsync(s => s.UserId == user_id);
+            Student? student = null;
+            if (Guid.TryParse(studentId, out var guid))
+            {
+                student = await _context.Students
+                    .Include(s => s.User)
+                    .Include(s => s.StudentEnrollments)
+                        .ThenInclude(se => se.EnrolledSection)
+                    .FirstOrDefaultAsync(s => s.StudentId == guid || s.UserId == studentId);
+            }
+            else
+            {
+                student = await _context.Students
+                    .Include(s => s.User)
+                    .Include(s => s.StudentEnrollments)
+                        .ThenInclude(se => se.EnrolledSection)
+                    .FirstOrDefaultAsync(s => s.UserId == studentId);
+            }
 
             if (student == null) return null;
+
+            var enrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
+                ?? student.StudentEnrollments.FirstOrDefault();
 
             return new StudentDto
             {
@@ -154,7 +182,8 @@ namespace Auth.Services
                 DateOfBirth = student.DateOfBirth,
                 EnrollmentDate = student.EnrollmentDate,
                 CNIC = student.CNIC,
-                Section = student.StudentEnrollments.FirstOrDefault()?.EnrolledSection?.SectionName
+                SectionId = enrollment?.SectionId,
+                Section = FormatSectionLabel(enrollment?.EnrolledSection)
             };
         }
 
@@ -162,6 +191,8 @@ namespace Auth.Services
         {
             var student = await _context.Students
                 .Include(s => s.User)
+                .Include(s => s.StudentEnrollments)
+                    .ThenInclude(se => se.EnrolledSection)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
 
             if (student == null)
@@ -188,7 +219,42 @@ namespace Auth.Services
                 }
             }
 
+            if (dto.SectionId.HasValue && dto.SectionId.Value != Guid.Empty)
+            {
+                var sectionExists = await _context.Sections.AnyAsync(s => s.SectionId == dto.SectionId.Value);
+                if (!sectionExists)
+                    return new BadRequestObjectResult("Section does not exist.");
+
+                var enrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
+                    ?? student.StudentEnrollments.FirstOrDefault();
+
+                if (enrollment != null)
+                {
+                    enrollment.SectionId = dto.SectionId.Value;
+                    enrollment.IsActive = true;
+                    enrollment.WithdrawnDate = null;
+                }
+                else
+                {
+                    _context.StudentEnrollments.Add(new StudentEnrollments
+                    {
+                        StudentEnrollmentId = Guid.NewGuid(),
+                        StudentId = student.StudentId,
+                        SectionId = dto.SectionId.Value,
+                        EnrolledDate = DateTime.UtcNow,
+                        IsActive = true
+                    });
+                }
+            }
+
             await _context.SaveChangesAsync();
+
+            await _context.Entry(student).Collection(s => s.StudentEnrollments).Query()
+                .Include(se => se.EnrolledSection)
+                .LoadAsync();
+
+            var activeEnrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
+                ?? student.StudentEnrollments.FirstOrDefault();
 
             var updated = new StudentDto
             {
@@ -199,7 +265,9 @@ namespace Auth.Services
                 PhoneNumber = student.User?.PhoneNumber,
                 DateOfBirth = student.DateOfBirth,
                 EnrollmentDate = student.EnrollmentDate,
-                CNIC = student.CNIC
+                CNIC = student.CNIC,
+                SectionId = activeEnrollment?.SectionId,
+                Section = FormatSectionLabel(activeEnrollment?.EnrolledSection)
             };
 
             return new OkObjectResult(updated);
@@ -248,7 +316,10 @@ namespace Auth.Services
                     DateOfBirth=s.DateOfBirth,
                     Email=s.User.Email,
                     PhoneNumber=s.User.PhoneNumber,
-                   Section= s.StudentEnrollments.First(e => e.SectionId == sectionId).EnrolledSection.SectionName,
+                   SectionId = sectionId,
+                   Section = s.StudentEnrollments.First(e => e.SectionId == sectionId).EnrolledSection.IntermediateClass
+                        + " - "
+                        + s.StudentEnrollments.First(e => e.SectionId == sectionId).EnrolledSection.SectionName,
 
                 })
                 .ToListAsync();

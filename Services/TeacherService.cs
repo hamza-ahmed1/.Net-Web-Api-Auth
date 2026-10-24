@@ -146,21 +146,62 @@ namespace Auth.Services
 
         public async Task<List<TeacherDetailDto>> GetAllTechers()
         {
-            return await _context.Teachers.Include(t => t.User).Select(t => new TeacherDetailDto
+            var teachers = await _context.Teachers
+                .Include(t => t.User)
+                .Include(t => t.TeacherAssignments)
+                    .ThenInclude(a => a.Section)
+                .Include(t => t.TeacherAssignments)
+                    .ThenInclude(a => a.Course)
+                .ToListAsync();
+
+            var result = new List<TeacherDetailDto>();
+            foreach (var t in teachers)
             {
-                Teacher_id=t.Teacher_Id,
-                Address = t.Address,
-                Fullname = t.User.FullName,
-                IsActive = t.IsActive,
-                CNIC = t.CNIC,
-                DateOfBirth = t.DateOfBirth,
-                Department = t.Department,
-                Salary = t.Salary,
-                Email = t.User.Email,
-                HireDate = t.HireDate,
-                IdentificationNumber = t.IdentificationNumber,
-                Qualification = t.Qualification
-            }).ToListAsync();
+                var activeAssignments = (t.TeacherAssignments ?? Enumerable.Empty<TeacherSectionCourse>())
+                    .Where(a => a.IsActive && a.Section != null && a.Course != null)
+                    .ToList();
+
+                var roles = t.User != null
+                    ? await _userManager.GetRolesAsync(t.User)
+                    : Array.Empty<string>();
+                var role = roles.Contains("HOD", StringComparer.OrdinalIgnoreCase)
+                    ? "HOD"
+                    : roles.FirstOrDefault() ?? "Teacher";
+
+                result.Add(new TeacherDetailDto
+                {
+                    Teacher_id = t.Teacher_Id,
+                    Address = t.Address,
+                    Fullname = t.User.FullName,
+                    IsActive = t.IsActive,
+                    CNIC = t.CNIC,
+                    DateOfBirth = t.DateOfBirth,
+                    Department = t.Department,
+                    Salary = t.Salary,
+                    Email = t.User.Email,
+                    HireDate = t.HireDate,
+                    IdentificationNumber = t.IdentificationNumber,
+                    Qualification = t.Qualification,
+                    Role = role,
+                    AssignedSections = activeAssignments
+                        .Select(a => $"{a.Section.IntermediateClass} - {a.Section.SectionName}")
+                        .Distinct()
+                        .OrderBy(s => s)
+                        .ToList(),
+                    AssignedCourses = activeAssignments
+                        .Select(a => a.Course.CourseName)
+                        .Distinct()
+                        .OrderBy(c => c)
+                        .ToList(),
+                    Assignments = activeAssignments
+                        .Select(a => $"{a.Course.CourseName} · {a.Section.IntermediateClass} - {a.Section.SectionName}")
+                        .Distinct()
+                        .OrderBy(a => a)
+                        .ToList()
+                });
+            }
+
+            return result;
         }
 
         public async Task<IActionResult> DeleteTeacher(Guid teacherId)
@@ -329,8 +370,8 @@ namespace Auth.Services
             worksheet.Cell(1, 4).Value = "Department";
             worksheet.Cell(1, 5).Value = "CNIC";
             worksheet.Cell(1, 6).Value = "Address";
-            worksheet.Cell(1, 7).Value = "Courses";
-            worksheet.Cell(1, 8).Value = "Sections";
+                worksheet.Cell(1, 7).Value = "Courses";
+                worksheet.Cell(1, 8).Value = "Sections";
 
 
             // Data - one row per teacher
@@ -342,13 +383,15 @@ namespace Auth.Services
                 var sections = teacher.TeacherAssignments != null
                     ? string.Join(", ", teacher.TeacherAssignments
                         .Where(a => a.Section != null)
-                        .Select(a => a.Section.SectionName))
+                        .Select(a => $"{a.Section.IntermediateClass} - {a.Section.SectionName}")
+                        .Distinct())
                     : string.Empty;
 
                 var courses = teacher.TeacherAssignments != null
                     ? string.Join(", ", teacher.TeacherAssignments
                         .Where(a => a.Course != null)
-                        .Select(a => a.Course.CourseName))
+                        .Select(a => a.Course.CourseName)
+                        .Distinct())
                     : string.Empty;
 
                 worksheet.Cell(row, 1).Value = teacher.IdentificationNumber;
@@ -357,8 +400,8 @@ namespace Auth.Services
                 worksheet.Cell(row, 4).Value = teacher.Department;
                 worksheet.Cell(row, 5).Value = teacher.CNIC;
                 worksheet.Cell(row, 6).Value = teacher.Address;
-                worksheet.Cell(row, 7).Value = sections;
-                worksheet.Cell(row, 8).Value = courses;
+                worksheet.Cell(row, 7).Value = courses;
+                worksheet.Cell(row, 8).Value = sections;
             }
             // Format headers
             worksheet.Row(1).Style.Font.Bold = true;

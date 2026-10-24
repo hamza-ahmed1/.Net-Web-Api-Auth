@@ -162,11 +162,25 @@ namespace Auth.Data
         builder.Entity<Announcement>()
             .HasIndex(a => a.CreatedAt);
 
+        // Avoid SQL Server multiple cascade paths:
+        // AspNetUsers -> Announcements -> Recipients AND AspNetUsers -> Recipients
+        builder.Entity<Announcement>()
+            .HasOne(a => a.Sender)
+            .WithMany()
+            .HasForeignKey(a => a.SenderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Entity<Announcement>()
             .HasMany(a => a.Recipients)
             .WithOne(ar => ar.Announcement)
             .HasForeignKey(ar => ar.AnnouncementId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<AnnouncementRecipient>()
+            .HasOne(ar => ar.User)
+            .WithMany()
+            .HasForeignKey(ar => ar.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Entity<AnnouncementRecipient>()
             .HasIndex(ar => new { ar.UserId, ar.IsRead });
