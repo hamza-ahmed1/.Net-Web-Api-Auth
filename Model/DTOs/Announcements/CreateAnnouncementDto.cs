@@ -1,25 +1,37 @@
-using Auth.Model.Entities;
+using System.ComponentModel.DataAnnotations;
 
 namespace Auth.Model.DTOs.Announcements
 {
     public class CreateAnnouncementDto
     {
+        [Required]
+        [StringLength(200)]
         public string Title { get; set; } = string.Empty;
-        public string Body { get; set; } = string.Empty;
-        public Priority Priority { get; set; } = Priority.Normal;
-        public AudienceType Audience { get; set; }
-        public DateTime? ExpiresAt { get; set; }
 
-        /// <summary>
-        /// CourseId: required for Teacher role, triggers Teacher mode.
-        /// If present for HOD, HOD acts in Teacher mode (students in courses they teach).
-        /// If absent for HOD, HOD acts in HOD mode (all teachers/students in their department).
-        /// </summary>
-        public Guid? CourseId { get; set; }
+        [Required]
+        [StringLength(4000)]
+        public string Message { get; set; } = string.Empty;
 
-        /// <summary>
-        /// SectionId: optional for Teacher mode. If provided, limits recipients to students in that specific section.
-        /// </summary>
+        /// <summary>Normal, Important or Urgent.</summary>
+        public string Priority { get; set; } = "Normal";
+
+        /// <summary>HODs, Teachers or Students. Allowed values depend on the sender's role.</summary>
+        [Required]
+        public string Audience { get; set; } = string.Empty;
+
+        /// <summary>All, Section or Selected.</summary>
+        [Required]
+        public string Scope { get; set; } = "All";
+
+        /// <summary>Required for Section scope; optional filter for Selected students.</summary>
         public Guid? SectionId { get; set; }
+
+        /// <summary>
+        /// For Selected scope: Teacher_Id values (HODs/Teachers audience) or StudentId values (Students audience).
+        /// Every id must be within the sender's eligible recipients.
+        /// </summary>
+        public List<Guid> RecipientIds { get; set; } = new();
+
+        public DateTime? ExpiresAt { get; set; }
     }
 }

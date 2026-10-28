@@ -1,4 +1,5 @@
 using Auth.Data;
+using Auth.Hubs;
 using Auth.Model.Entities;
 using Auth.Services;
 using Auth.Services.Interfaces;
@@ -43,6 +44,20 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
         ClockSkew = TimeSpan.Zero
     };
+
+    // Browsers cannot set headers on WebSocket/SSE requests, so SignalR sends the JWT as ?access_token=; accept it only on the hub
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments(NotificationHub.Path))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization(options =>
@@ -68,6 +83,15 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IApplicableFeeService, ApplicableFeeService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+
+// Real-time notifications. Clients.User(...) targets the ClaimTypes.NameIdentifier claim (SignalR's default
+// user id), which TokenService sets to the Identity user id, so hub users match AnnouncementRecipient.UserId.
+builder.Services.AddSignalR();
+builder.Services.Configure<NotificationDispatchOptions>(builder.Configuration.GetSection(NotificationDispatchOptions.SectionName));
+builder.Services.AddSingleton<NotificationQueueSignal>();
+builder.Services.AddHostedService<NotificationDispatcher>();
 
 
 
@@ -95,6 +119,7 @@ app.UseCors("SpaPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationHub>(NotificationHub.Path);
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

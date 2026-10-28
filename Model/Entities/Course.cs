@@ -8,6 +8,8 @@ namespace Auth.Model.Entities
         public Guid CourseId { get; set; }
         [Required]
         public string CourseName { get; set; } = string.Empty;
+        [MaxLength(20)]
+        public string? CourseCode { get; set; }
         [Required]
         public string CourseDescription { get; set; } = string.Empty;
         [Required]

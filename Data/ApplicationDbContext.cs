@@ -29,6 +29,7 @@ namespace Auth.Data
         public DbSet<TransactionHistory> TransactionHistories { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementRecipient> AnnouncementRecipients { get; set; }
+        public DbSet<Department> Departments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -188,6 +189,39 @@ namespace Auth.Data
         builder.Entity<AnnouncementRecipient>()
             .HasIndex(ar => new { ar.AnnouncementId, ar.UserId })
             .IsUnique();
+
+        // Dispatcher: find claimable jobs; worker: page through pending recipients
+        builder.Entity<Announcement>()
+            .HasIndex(a => new { a.Status, a.NextAttemptAt });
+
+        builder.Entity<Announcement>()
+            .HasIndex(a => new { a.SenderId, a.CreatedAt });
+
+        builder.Entity<AnnouncementRecipient>()
+            .HasIndex(ar => new { ar.AnnouncementId, ar.DeliveryStatus });
+
+        builder.Entity<Announcement>()
+            .HasOne(a => a.Section)
+            .WithMany()
+            .HasForeignKey(a => a.SectionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<Department>()
+            .HasIndex(d => d.Name)
+            .IsUnique();
+
+        // A department in use cannot be deleted; deactivate it instead
+        builder.Entity<Teacher>()
+            .HasOne(t => t.Department)
+            .WithMany(d => d.Teachers)
+            .HasForeignKey(t => t.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Student>()
+            .HasOne(s => s.Department)
+            .WithMany(d => d.Students)
+            .HasForeignKey(s => s.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
     }
 }

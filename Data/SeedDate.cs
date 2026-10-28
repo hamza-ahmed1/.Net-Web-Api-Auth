@@ -150,6 +150,18 @@ namespace Auth.Data
                 new { Email = "hamza.tariq@lms.edu.pk", Name = "Sir Hamza Tariq", Cnic = "38403-2233445-1", Qual = "M.Sc Physics (UET Taxila)", Dept = "Science", IdNo = "TCHR-1010", Address = "House 67, Civil Lines, Sargodha", Salary = 78000m, Dob = new DateTime(1991, 4, 8), Subject = "Physics" },
             };
 
+            // Departments; Pre-Engineering and Pre-Medical students both belong to Science
+            const string scienceDepartment = "Science";
+            foreach (var name in teacherDefs.Select(d => d.Dept).Append(scienceDepartment).Distinct())
+            {
+                if (!await context.Departments.AnyAsync(d => d.Name == name))
+                {
+                    context.Departments.Add(new Department { DepartmentId = Guid.NewGuid(), Name = name });
+                }
+            }
+            await context.SaveChangesAsync();
+            var departmentIds = await context.Departments.ToDictionaryAsync(d => d.Name, d => d.DepartmentId, StringComparer.OrdinalIgnoreCase);
+
             for (var ti = 0; ti < teacherDefs.Length; ti++)
             {
                 var def = teacherDefs[ti];
@@ -162,7 +174,7 @@ namespace Auth.Data
                         CNIC = def.Cnic,
                         Qualification = def.Qual,
                         IdentificationNumber = def.IdNo,
-                        Department = def.Dept,
+                        DepartmentId = departmentIds[def.Dept],
                         DateOfBirth = def.Dob,
                         HireDate = DateTime.UtcNow.AddYears(-(2 + (ti % 5))),
                         Address = def.Address,
@@ -242,7 +254,8 @@ namespace Auth.Data
                             Gender = isFemale ? "Female" : "Male",
                             FatherName = fatherName,
                             CurrentAdress = $"House {(nameIndex % 90) + 1}, {area}",
-                            PermanentAddress = $"House {(nameIndex % 90) + 1}, {area}, {city}"
+                            PermanentAddress = $"House {(nameIndex % 90) + 1}, {area}, {city}",
+                            DepartmentId = departmentIds[scienceDepartment]
                         };
                         context.Students.Add(student);
                         await context.SaveChangesAsync();

@@ -41,6 +41,9 @@ namespace Auth.Services
             if (cnicExists)
                 return new BadRequestObjectResult("A teacher with this CNIC already exists.");
 
+            if (!await IsActiveDepartmentAsync(teacherDto.DepartmentId))
+                return new BadRequestObjectResult("Choose a valid, active department.");
+
             var user = new ApplicationUser
             {
                 UserName = teacherDto.Email,
@@ -75,7 +78,7 @@ namespace Auth.Services
                     CNIC = teacherDto.CNIC,
                     Qualification = teacherDto.Qualification,
                     IdentificationNumber = teacherDto.IdentificationNumber,
-                    Department = teacherDto.Department,
+                    DepartmentId = teacherDto.DepartmentId,
                     DateOfBirth = teacherDto.DateOfBirth,
                     HireDate = teacherDto.HireDate,
                     Address = teacherDto.Address,
@@ -115,12 +118,16 @@ namespace Auth.Services
             if (teacher == null)
                 return new BadRequestObjectResult("Teacher doesn't exist.");
 
-      
+            // Keeping the current department is allowed even if it was deactivated since
+            if (!teacherDto.DepartmentId.HasValue
+                || (teacherDto.DepartmentId != teacher.DepartmentId && !await IsActiveDepartmentAsync(teacherDto.DepartmentId.Value)))
+                return new BadRequestObjectResult("Choose a valid, active department.");
+
             teacher.Address = teacherDto.Address;
             teacher.IsActive = teacherDto.IsActive;
             teacher.CNIC = teacherDto.CNIC;
             teacher.DateOfBirth = teacherDto.DateOfBirth;
-            teacher.Department = teacherDto.Department;
+            teacher.DepartmentId = teacherDto.DepartmentId;
             teacher.Salary = teacherDto.Salary;
             teacher.HireDate = teacherDto.HireDate;
             teacher.IdentificationNumber = teacherDto.IdentificationNumber;
@@ -148,6 +155,7 @@ namespace Auth.Services
         {
             var teachers = await _context.Teachers
                 .Include(t => t.User)
+                .Include(t => t.Department)
                 .Include(t => t.TeacherAssignments)
                     .ThenInclude(a => a.Section)
                 .Include(t => t.TeacherAssignments)
@@ -176,7 +184,8 @@ namespace Auth.Services
                     IsActive = t.IsActive,
                     CNIC = t.CNIC,
                     DateOfBirth = t.DateOfBirth,
-                    Department = t.Department,
+                    DepartmentId = t.DepartmentId,
+                    Department = t.Department?.Name ?? string.Empty,
                     Salary = t.Salary,
                     Email = t.User.Email,
                     HireDate = t.HireDate,
@@ -243,7 +252,7 @@ namespace Auth.Services
 
         public async Task<Teacher> GetTeacherByID(Guid teacher_id)
         {
-            return await _context.Teachers.Include(t => t.User).FirstOrDefaultAsync(t => t.Teacher_Id == teacher_id);
+            return await _context.Teachers.Include(t => t.User).Include(t => t.Department).FirstOrDefaultAsync(t => t.Teacher_Id == teacher_id);
          
 
        
@@ -318,10 +327,14 @@ namespace Auth.Services
         public async Task<IActionResult> DemoteToTeacher(Guid teacherId)
         {
             var teacher = await _context.Teachers.Include(t => t.User).FirstOrDefaultAsync(t => t.Teacher_Id == teacherId);
-            // check if already a teacher
-            if(await _userManager.IsInRoleAsync(teacher.User,"Teacher"))
+            if (teacher == null)
             {
-                return new BadRequestObjectResult("Already a teacher");
+                return new BadRequestObjectResult("Teacher not found.");
+            }
+            // check HOD rather than Teacher: startup seeding re-adds the Teacher role, so an HOD may hold both
+            if(!await _userManager.IsInRoleAsync(teacher.User,"HOD"))
+            {
+                return new BadRequestObjectResult("Teacher is not an HOD.");
             }
             // remove HOD role:
             var issucceded = await _userManager.RemoveFromRoleAsync(teacher.User, "HOD");
@@ -331,7 +344,10 @@ namespace Auth.Services
             }
             else
             {
-                await _userManager.AddToRoleAsync(teacher.User, "Teacher");
+                if (!await _userManager.IsInRoleAsync(teacher.User, "Teacher"))
+                {
+                    await _userManager.AddToRoleAsync(teacher.User, "Teacher");
+                }
                 return new OkObjectResult("Role has been updated to Teacher");
             }
 
@@ -340,6 +356,11 @@ namespace Auth.Services
              
 
         }
+        private Task<bool> IsActiveDepartmentAsync(Guid departmentId)
+        {
+            return _context.Departments.AnyAsync(d => d.DepartmentId == departmentId && d.IsActive);
+        }
+
         private static string GenerateTemporaryPassword()
         {
             var randomPart = Convert.ToBase64String(RandomNumberGenerator.GetBytes(6))
@@ -354,6 +375,7 @@ namespace Auth.Services
             var teacherDetails = await _context
                 .Teachers
                 .Include(t => t.User)
+                .Include(t => t.Department)
                 .Include(t => t.TeacherAssignments)
                     .ThenInclude(ta => ta.Section)
                 .Include(t => t.TeacherAssignments)
@@ -397,7 +419,7 @@ namespace Auth.Services
                 worksheet.Cell(row, 1).Value = teacher.IdentificationNumber;
                 worksheet.Cell(row, 2).Value = teacher.User.FullName;
                 worksheet.Cell(row, 3).Value = teacher.User.Email;
-                worksheet.Cell(row, 4).Value = teacher.Department;
+                worksheet.Cell(row, 4).Value = teacher.Department?.Name ?? string.Empty;
                 worksheet.Cell(row, 5).Value = teacher.CNIC;
                 worksheet.Cell(row, 6).Value = teacher.Address;
                 worksheet.Cell(row, 7).Value = courses;

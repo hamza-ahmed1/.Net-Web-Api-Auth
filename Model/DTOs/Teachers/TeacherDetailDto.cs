@@ -23,8 +23,10 @@ namespace Auth.Model.DTOs.Teachers
         [StringLength(100)]
         public string IdentificationNumber { get; set; } = string.Empty;
 
-        [Required]
-        [StringLength(100)]
+        /// <summary>Required when updating; the department must exist and be active.</summary>
+        public Guid? DepartmentId { get; set; }
+
+        /// <summary>Department name, returned for display only (ignored on update).</summary>
         public string Department { get; set; } = string.Empty;
 
         [Required]

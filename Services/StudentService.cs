@@ -37,6 +37,9 @@ namespace Auth.Services
             if (!sectionExists)
                 return new BadRequestObjectResult("Section does not exist.");
 
+            if (!await IsActiveDepartmentAsync(studentCreateDto.DepartmentId))
+                return new BadRequestObjectResult("Choose a valid, active department.");
+
             var strategy = _context.Database.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync<IActionResult>(async () =>
@@ -74,7 +77,8 @@ namespace Auth.Services
                         UserId = applicationUser.Id,
                         DateOfBirth = studentCreateDto.DateOfBirth,
                         EnrollmentDate = studentCreateDto.EnrollmentDate,
-                        CNIC = studentCreateDto.CNIC
+                        CNIC = studentCreateDto.CNIC,
+                        DepartmentId = studentCreateDto.DepartmentId
                     };
 
                     _context.Students.Add(student);
@@ -135,6 +139,8 @@ namespace Auth.Services
                     DateOfBirth = s.DateOfBirth,
                     EnrollmentDate = s.EnrollmentDate,
                     CNIC = s.CNIC,
+                    DepartmentId = s.DepartmentId,
+                    Department = s.Department != null ? s.Department.Name : string.Empty,
                     SectionId = s.StudentEnrollments
                         .Where(e => e.IsActive)
                         .Select(e => (Guid?)e.SectionId)
@@ -154,6 +160,7 @@ namespace Auth.Services
             {
                 student = await _context.Students
                     .Include(s => s.User)
+                    .Include(s => s.Department)
                     .Include(s => s.StudentEnrollments)
                         .ThenInclude(se => se.EnrolledSection)
                     .FirstOrDefaultAsync(s => s.StudentId == guid || s.UserId == studentId);
@@ -162,6 +169,7 @@ namespace Auth.Services
             {
                 student = await _context.Students
                     .Include(s => s.User)
+                    .Include(s => s.Department)
                     .Include(s => s.StudentEnrollments)
                         .ThenInclude(se => se.EnrolledSection)
                     .FirstOrDefaultAsync(s => s.UserId == studentId);
@@ -182,6 +190,8 @@ namespace Auth.Services
                 DateOfBirth = student.DateOfBirth,
                 EnrollmentDate = student.EnrollmentDate,
                 CNIC = student.CNIC,
+                DepartmentId = student.DepartmentId,
+                Department = student.Department?.Name ?? string.Empty,
                 SectionId = enrollment?.SectionId,
                 Section = FormatSectionLabel(enrollment?.EnrolledSection)
             };
@@ -197,6 +207,14 @@ namespace Auth.Services
 
             if (student == null)
                 return new NotFoundObjectResult("Student not found.");
+
+            // Keeping the current department is allowed even if it was deactivated since
+            if (dto.DepartmentId.HasValue && dto.DepartmentId != student.DepartmentId)
+            {
+                if (!await IsActiveDepartmentAsync(dto.DepartmentId.Value))
+                    return new BadRequestObjectResult("Choose a valid, active department.");
+                student.DepartmentId = dto.DepartmentId;
+            }
 
             student.DateOfBirth = dto.DateOfBirth;
             student.EnrollmentDate = dto.EnrollmentDate;
@@ -255,6 +273,7 @@ namespace Auth.Services
 
             var activeEnrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
                 ?? student.StudentEnrollments.FirstOrDefault();
+            await _context.Entry(student).Reference(s => s.Department).LoadAsync();
 
             var updated = new StudentDto
             {
@@ -266,11 +285,18 @@ namespace Auth.Services
                 DateOfBirth = student.DateOfBirth,
                 EnrollmentDate = student.EnrollmentDate,
                 CNIC = student.CNIC,
+                DepartmentId = student.DepartmentId,
+                Department = student.Department?.Name ?? string.Empty,
                 SectionId = activeEnrollment?.SectionId,
                 Section = FormatSectionLabel(activeEnrollment?.EnrolledSection)
             };
 
             return new OkObjectResult(updated);
+        }
+
+        private Task<bool> IsActiveDepartmentAsync(Guid departmentId)
+        {
+            return _context.Departments.AnyAsync(d => d.DepartmentId == departmentId && d.IsActive);
         }
 
         public async Task<IActionResult> DeleteStudent(Guid studentId)

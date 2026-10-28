@@ -98,6 +98,7 @@
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
 
+                var isMobile = IsMobileClient();
                 return Ok(new AuthResponseDto
                 {
                     AccessToken = accessToken,
@@ -108,15 +109,19 @@
                         FullName = user.FullName,
                         Email = user.Email,
                         Roles= roles.ToList()
-                    }
+                    },
+                    RefreshToken = isMobile ? refreshToken : null,
+                    RefreshTokenExpiresAt = isMobile ? DateTime.UtcNow.AddDays(7) : null
                 });
             }
 
             [HttpPost("refresh")]
             [AllowAnonymous]
-            public async Task<IActionResult> Refresh()
+            public async Task<IActionResult> Refresh([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] RefreshTokenRequestDto? body)
             {
-                var refreshToken = Request.Cookies["refreshToken"];
+                // Browsers send the httpOnly cookie; mobile apps send the token in the body
+                var fromCookie = Request.Cookies["refreshToken"];
+                var refreshToken = string.IsNullOrEmpty(fromCookie) ? body?.RefreshToken : fromCookie;
                 if (string.IsNullOrEmpty(refreshToken)) return Unauthorized();
 
                 var storedToken = await _db.RefreshTokens
@@ -126,15 +131,43 @@
                 if (storedToken == null || storedToken.ExpiresAt < DateTime.UtcNow)
                     return Unauthorized();
 
+                // Deactivated accounts are locked out; stop issuing them tokens
+                if (await _userManager.IsLockedOutAsync(storedToken.User))
+                    return Unauthorized();
+
                 var newAccessToken = await _tokenService.GenerateAccessToken(storedToken.User, _userManager);
-                return Ok(new AuthResponseDto { AccessToken = newAccessToken });
+
+                if (string.IsNullOrEmpty(fromCookie))
+                {
+                    // Mobile: slide the expiry so a student who opens the app at least weekly stays signed in.
+                    // The token itself is kept (not rotated) so a background refresh can't race the foreground one.
+                    storedToken.ExpiresAt = DateTime.UtcNow.AddDays(7);
+                    await _db.SaveChangesAsync();
+                }
+
+                var roles = await _userManager.GetRolesAsync(storedToken.User);
+                return Ok(new AuthResponseDto
+                {
+                    AccessToken = newAccessToken,
+                    AccessTokenExpiresAt = DateTime.UtcNow.AddMinutes(30),
+                    User = new UserDto
+                    {
+                        Id = storedToken.User.Id,
+                        FullName = storedToken.User.FullName,
+                        Email = storedToken.User.Email,
+                        Roles = roles.ToList()
+                    },
+                    RefreshToken = string.IsNullOrEmpty(fromCookie) ? storedToken.Token : null,
+                    RefreshTokenExpiresAt = string.IsNullOrEmpty(fromCookie) ? storedToken.ExpiresAt : null
+                });
             }
 
             [HttpPost("logout")]
             [Authorize]
-            public async Task<IActionResult> Logout()
+            public async Task<IActionResult> Logout([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] RefreshTokenRequestDto? body)
             {
-                var refreshToken = Request.Cookies["refreshToken"];
+                var fromCookie = Request.Cookies["refreshToken"];
+                var refreshToken = string.IsNullOrEmpty(fromCookie) ? body?.RefreshToken : fromCookie;
                 var stored = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshToken);
                 if (stored != null)
                 {
@@ -243,6 +276,15 @@
 
         [HttpGet("test")]
         public IActionResult Test() => Ok("Server is alive");
+
+        /// <summary>Mobile apps can't keep the httpOnly refresh cookie, so they opt in to receiving the token in the body.</summary>
+        private bool IsMobileClient() =>
+            string.Equals(Request.Headers["X-Client-Type"], "mobile", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public class RefreshTokenRequestDto
+    {
+        public string? RefreshToken { get; set; }
     }
 
     }

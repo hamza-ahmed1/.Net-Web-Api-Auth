@@ -28,6 +28,9 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
                     b.Property<int>("Audience")
                         .HasColumnType("int");
 
@@ -38,11 +41,41 @@ namespace Auth.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("LockedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("LockedUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("NextAttemptAt")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("Priority")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecipientCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Scope")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("SectionId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SenderId")
                         .IsRequired()
@@ -53,6 +86,9 @@ namespace Auth.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -62,7 +98,11 @@ namespace Auth.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("SenderId");
+                    b.HasIndex("SectionId");
+
+                    b.HasIndex("SenderId", "CreatedAt");
+
+                    b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("Announcements");
                 });
@@ -73,11 +113,27 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("AcknowledgedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("AnnouncementId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("DeliveryAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DeliveryStatus")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("datetime2");
@@ -87,6 +143,8 @@ namespace Auth.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AnnouncementId", "DeliveryStatus");
 
                     b.HasIndex("AnnouncementId", "UserId")
                         .IsUnique();
@@ -248,6 +306,10 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("CourseCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("CourseDescription")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -265,6 +327,35 @@ namespace Auth.Migrations
                     b.HasKey("CourseId");
 
                     b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Department", b =>
+                {
+                    b.Property<Guid>("DepartmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("DepartmentId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Departments");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.Exam", b =>
@@ -551,6 +642,9 @@ namespace Auth.Migrations
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("EnrollmentDate")
                         .HasColumnType("datetime2");
 
@@ -575,6 +669,8 @@ namespace Auth.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("StudentId");
+
+                    b.HasIndex("DepartmentId");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -862,10 +958,8 @@ namespace Auth.Migrations
                     b.Property<DateTime>("DateOfBirth")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Department")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("HireDate")
                         .HasColumnType("datetime2");
@@ -892,6 +986,8 @@ namespace Auth.Migrations
 
                     b.HasKey("Teacher_Id");
 
+                    b.HasIndex("DepartmentId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Teachers");
@@ -899,11 +995,18 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.Announcement", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.Section", "Section")
+                        .WithMany()
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Auth.Model.Entities.ApplicationUser", "Sender")
                         .WithMany()
                         .HasForeignKey("SenderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Section");
 
                     b.Navigation("Sender");
                 });
@@ -1052,11 +1155,18 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.Student", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.Department", "Department")
+                        .WithMany("Students")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Auth.Model.Entities.ApplicationUser", "User")
                         .WithOne("Student")
                         .HasForeignKey("Auth.Model.Entities.Student", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Department");
 
                     b.Navigation("User");
                 });
@@ -1171,11 +1281,18 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Teacher", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.Department", "Department")
+                        .WithMany("Teachers")
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Auth.Model.Entities.ApplicationUser", "User")
                         .WithMany("Teachers")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Department");
 
                     b.Navigation("User");
                 });
@@ -1197,6 +1314,13 @@ namespace Auth.Migrations
             modelBuilder.Entity("Auth.Model.Entities.Course", b =>
                 {
                     b.Navigation("TeacherAssignments");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Department", b =>
+                {
+                    b.Navigation("Students");
+
+                    b.Navigation("Teachers");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.FeeCategory", b =>

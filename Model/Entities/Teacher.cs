@@ -19,9 +19,10 @@ public class Teacher
     [StringLength(100)]
     public string IdentificationNumber { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(100)]
-    public string Department { get; set; } = string.Empty;
+    public Guid? DepartmentId { get; set; }
+
+    [ForeignKey(nameof(DepartmentId))]
+    public Department? Department { get; set; }
 
     [Required]
     public DateTime DateOfBirth { get; set; }

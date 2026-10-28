@@ -21,6 +21,7 @@ namespace Auth.Services
             var course = new Course
             {
                 CourseName = dto.CourseName,
+                CourseCode = NormalizeCode(dto.CourseCode),
                 CourseDescription = dto.CourseDescription,
                 CourseDuration = dto.CourseDuration
             };
@@ -59,12 +60,19 @@ namespace Auth.Services
             }
 
             course.CourseName = dto.CourseName;
+            course.CourseCode = NormalizeCode(dto.CourseCode);
             course.CourseDescription = dto.CourseDescription;
             course.CourseDuration = dto.CourseDuration;
 
             await _context.SaveChangesAsync();
 
             return course;
+        }
+
+        // Codes are stored trimmed and upper-cased; blank means "no code"
+        private static string? NormalizeCode(string? code)
+        {
+            return string.IsNullOrWhiteSpace(code) ? null : code.Trim().ToUpperInvariant();
         }
 
         // DELETE

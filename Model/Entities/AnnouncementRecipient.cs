@@ -4,6 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Auth.Model.Entities
 {
+    /// <summary>
+    /// Pending: not yet pushed. Attempted: SignalR send was invoked (no guarantee the client got it).
+    /// Acknowledged: the client confirmed receipt through the hub. Failed: gave up after the retry limit.
+    /// </summary>
+    public enum DeliveryStatus { Pending = 1, Attempted = 2, Acknowledged = 3, Failed = 4 }
+
     public class AnnouncementRecipient
     {
         [Key]
@@ -25,5 +31,16 @@ namespace Auth.Model.Entities
         public bool IsRead { get; set; } = false;
 
         public DateTime? ReadAt { get; set; }
+
+        public DeliveryStatus DeliveryStatus { get; set; } = DeliveryStatus.Pending;
+
+        public int DeliveryAttempts { get; set; }
+
+        public DateTime? LastAttemptAt { get; set; }
+
+        public DateTime? AcknowledgedAt { get; set; }
+
+        [StringLength(500)]
+        public string? LastError { get; set; }
     }
 }

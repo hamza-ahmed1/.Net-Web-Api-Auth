@@ -25,8 +25,7 @@ namespace Auth.Model.DTOs.Teachers
         public string IdentificationNumber { get; set; } = string.Empty;
 
         [Required]
-        [StringLength(100)]
-        public string Department { get; set; } = string.Empty;
+        public Guid DepartmentId { get; set; }
 
         [Required]
         public DateTime DateOfBirth { get; set; }

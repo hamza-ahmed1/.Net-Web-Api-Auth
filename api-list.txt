@@ -107,3 +107,50 @@ Teacher endpoints requiring Authorization: use Authorization: Bearer {accessToke
 
 
 
+
+
+Notifications (all require Authorization: Bearer {accessToken})
+- POST {BASE_URL}/api/notifications                 Admin/HOD/Teacher. Returns 202; delivery happens in the background   done using nextjs
+    { "title": "...", "message": "...", "priority": "Normal|Important|Urgent",
+      "audience": "HODs|Teachers|Students", "scope": "All|Section|Selected",
+      "sectionId": "<guid, for Section / Selected students>", "recipientIds": ["<Teacher_Id or StudentId>"] }
+    Admin   -> HODs, Teachers (All | Selected)
+    HOD     -> Teachers in own department (All | Selected); Students in own department (All | Section | Selected)
+    Teacher -> Students in own assigned sections (All | Section | Selected)
+    Student -> cannot send (403)
+- GET  {BASE_URL}/api/notifications?unreadOnly=false&page=1&pageSize=20   own inbox + unreadCount   done using nextjs
+- GET  {BASE_URL}/api/notifications/unread-count                          done using nextjs
+- POST {BASE_URL}/api/notifications/{id}/read                             done using nextjs
+- POST {BASE_URL}/api/notifications/read-all      body { "ids": [..] } or {} for all   done using nextjs
+- GET  {BASE_URL}/api/notifications/targets       what the caller may send to (audiences, sections, teachers, HODs)   done using nextjs
+- GET  {BASE_URL}/api/notifications/targets/sections/{sectionId}/students   HOD/Teacher, for Selected students   done using nextjs
+- GET  {BASE_URL}/api/notifications/sent          sender's notifications with status (Admin sees all)   done using nextjs
+- GET  {BASE_URL}/api/notifications/{id}/status   sender or Admin   done using nextjs
+- POST {BASE_URL}/api/notifications/{id}/retry    re-queue a Failed notification (sender or Admin)   done using nextjs
+
+SignalR hub: {BASE_URL}/hubs/notifications  (JWT via accessTokenFactory -> ?access_token=)
+- Server -> client: "ReceiveNotification" { id, title, message, priority, senderName, senderRole, createdAt, isRead }
+- Client -> server: "AcknowledgeNotification"(id) to confirm receipt
+- Notifications are saved first (database is the source of truth); clients reload the inbox after reconnecting.
+- Recipients are fixed when a notification is sent: students who join a section later do not get it, students who leave keep it.
+- Status: Queued -> Processing -> Processed, or Failed after Notifications:MaxAttempts (default 5) with exponential backoff.
+  Per recipient: Pending -> Attempted (pushed) -> Acknowledged (client confirmed), or Failed.
+  Tunable in appsettings "Notifications": BatchSize, MaxAttempts, PollInterval, LeaseDuration, RetryBaseDelay, RetryMaxDelay.
+
+
+Departments (Authorization required; changes are Admin only)
+- GET    {BASE_URL}/api/departments?activeOnly=false   list with teacherCount / studentCount (any signed-in user, for dropdowns)   done using nextjs
+- GET    {BASE_URL}/api/departments/{id}                done using nextjs
+- POST   {BASE_URL}/api/departments                     { "name": "Science", "description": "...", "isActive": true }   done using nextjs
+- PUT    {BASE_URL}/api/departments/{id}                same body; names are unique (case-insensitive)   done using nextjs
+- DELETE {BASE_URL}/api/departments/{id}                only when no teachers or students belong to it; otherwise deactivate   done using nextjs
+Teachers and students now send "departmentId" (create: required; teacher update: required; student update: optional)
+and responses include "departmentId" and "department" (the name). Inactive departments can't be chosen for new assignments.
+
+
+Mobile app sessions
+- POST {BASE_URL}/api/auth/login with header "X-Client-Type: mobile" also returns "refreshToken" and "refreshTokenExpiresAt" in the body
+  (browsers keep using the httpOnly cookie and never see the token).
+- POST {BASE_URL}/api/auth/refresh   body { "refreshToken": "..." } when there is no cookie; returns a new access token.
+  Mobile refresh tokens slide: each refresh extends them to 7 days from now. Locked-out (deactivated) users are refused.
+- POST {BASE_URL}/api/auth/logout    body { "refreshToken": "..." } revokes that device's token.

@@ -16,7 +16,7 @@ namespace Auth.Services
         public async Task<IEnumerable<TeacherSectionCourseDto>> GetAllAsync()
         {
             return await _context.TeacherSectionCourses
-                .Include(x => x.Teacher)
+                .Include(x => x.Teacher).ThenInclude(t => t!.Department)
                 .Include(x => x.Section)
                 .Include(x => x.Course)
                 .Select(x => MapToDto(x))
@@ -25,7 +25,7 @@ namespace Auth.Services
         public async Task<TeacherSectionCourseDto?> GetByIdAsync(Guid id)
         {
             var entity = await _context.TeacherSectionCourses
-                .Include(x => x.Teacher)
+                .Include(x => x.Teacher).ThenInclude(t => t!.Department)
                 .Include(x => x.Section)
                 .Include(x => x.Course)
                 .FirstOrDefaultAsync(x => x.TeacherSectionCourseId == id);
@@ -35,7 +35,7 @@ namespace Auth.Services
         public async Task<IEnumerable<TeacherSectionCourseDto>> GetAllByTeacherIdAsync(Guid teacherId)
         {
             return await _context.TeacherSectionCourses
-                .Include(x => x.Teacher)
+                .Include(x => x.Teacher).ThenInclude(t => t!.Department)
                 .Include(x => x.Section)
                 .Include(x => x.Course)
                 .Where(x => x.TeacherId == teacherId)
@@ -57,7 +57,7 @@ namespace Auth.Services
             await _context.SaveChangesAsync();
 
             // reload with navigation properties for the response
-            await _context.Entry(entity).Reference(x => x.Teacher).LoadAsync();
+            await _context.Entry(entity).Reference(x => x.Teacher).Query().Include(t => t.Department).LoadAsync();
             await _context.Entry(entity).Reference(x => x.Section).LoadAsync();
             await _context.Entry(entity).Reference(x => x.Course).LoadAsync();
 
@@ -80,7 +80,7 @@ namespace Auth.Services
 
             await _context.SaveChangesAsync();
 
-            await _context.Entry(entity).Reference(x => x.Teacher).LoadAsync();
+            await _context.Entry(entity).Reference(x => x.Teacher).Query().Include(t => t.Department).LoadAsync();
             await _context.Entry(entity).Reference(x => x.Section).LoadAsync();
             await _context.Entry(entity).Reference(x => x.Course).LoadAsync();
 
@@ -110,7 +110,7 @@ namespace Auth.Services
                     CNIC = entity.Teacher.CNIC,
                     Qualification = entity.Teacher.Qualification,
                     IdentificationNumber = entity.Teacher.IdentificationNumber,
-                    Department = entity.Teacher.Department,
+                    Department = entity.Teacher.Department?.Name ?? string.Empty,
                     DateOfBirth = entity.Teacher.DateOfBirth,
                     HireDate = entity.Teacher.HireDate,
                     Address = entity.Teacher.Address,

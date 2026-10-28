@@ -30,6 +30,11 @@ namespace Auth.Model.Entities
 
         public string CurrentAdress { get; set; } = string.Empty;
         public string PermanentAddress { get; set; } = string.Empty;
+
+        public Guid? DepartmentId { get; set; }
+
+        [ForeignKey(nameof(DepartmentId))]
+        public Department? Department { get; set; }
         public ICollection<StudentEnrollments> StudentEnrollments { get; set; } = new List<StudentEnrollments>();
 
     }
