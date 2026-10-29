@@ -162,6 +162,20 @@ namespace Auth.Data
             await context.SaveChangesAsync();
             var departmentIds = await context.Departments.ToDictionaryAsync(d => d.Name, d => d.DepartmentId, StringComparer.OrdinalIgnoreCase);
 
+            // Cohorts and campus students are assigned to (both admin-managed afterwards)
+            string[] cohortNames = { "Cohort-2025", "Cohort-2026" };
+            foreach (var name in cohortNames)
+            {
+                if (!await context.Cohorts.AnyAsync(c => c.Name == name))
+                    context.Cohorts.Add(new Cohort { Id = Guid.NewGuid(), Name = name });
+            }
+            const string campusName = "Qayyum-Abad Campus";
+            if (!await context.Campuses.AnyAsync(c => c.Name == campusName))
+                context.Campuses.Add(new Campus { Id = Guid.NewGuid(), Name = campusName });
+            await context.SaveChangesAsync();
+            var cohortIds = await context.Cohorts.ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase);
+            var campusId = await context.Campuses.Where(c => c.Name == campusName).Select(c => c.Id).FirstAsync();
+
             for (var ti = 0; ti < teacherDefs.Length; ti++)
             {
                 var def = teacherDefs[ti];
@@ -174,7 +188,8 @@ namespace Auth.Data
                         CNIC = def.Cnic,
                         Qualification = def.Qual,
                         IdentificationNumber = def.IdNo,
-                        DepartmentId = departmentIds[def.Dept],
+                        // All seeded teachers start in Science (def.Dept only seeds the department list)
+                        DepartmentId = departmentIds[scienceDepartment],
                         DateOfBirth = def.Dob,
                         HireDate = DateTime.UtcNow.AddYears(-(2 + (ti % 5))),
                         Address = def.Address,
@@ -213,6 +228,14 @@ namespace Auth.Data
 
             var studentsPerSection = 8;
             var nameIndex = 0;
+
+            // Student codes continue after the highest existing one so re-seeding never collides
+            var existingCodes = await context.Students.Select(st => st.StudentCode).ToListAsync();
+            var nextStudentCode = existingCodes
+                .Select(code => long.TryParse(code, out var n) ? n : 0)
+                .DefaultIfEmpty(0)
+                .Max();
+            nextStudentCode = Math.Max(nextStudentCode, 2001000);
             foreach (var section in sections)
             {
                 var stream = section.SectionName.StartsWith("Pre-Medical", StringComparison.OrdinalIgnoreCase)
@@ -241,16 +264,24 @@ namespace Auth.Data
                     if (student == null)
                     {
                         var cnicSerial = 1000000 + nameIndex;
+                        if (string.IsNullOrEmpty(user.PhoneNumber))
+                        {
+                            user.PhoneNumber = $"0300-{1000000 + nameIndex:D7}";
+                            await userManager.UpdateAsync(user);
+                        }
                         student = new Student
                         {
                             StudentId = Guid.NewGuid(),
                             UserId = user.Id,
+                            StudentCode = (++nextStudentCode).ToString(),
+                            IsActive = true,
                             DateOfBirth = DateTime.UtcNow.AddYears(-(16 + (nameIndex % 3))).AddDays(nameIndex),
                             EnrollmentDate = DateTime.UtcNow.AddMonths(-2),
                             CNIC = $"35202-{cnicSerial:D7}-{(nameIndex % 9) + 1}",
-                            Batch = section.IntermediateClass == "XII" ? "2024-2026" : "2025-2027",
+                            // Intake year for the 2026-27 session: XII joined in 2025, XI in 2026
+                            CohortId = cohortIds[section.IntermediateClass == "XII" ? "Cohort-2025" : "Cohort-2026"],
+                            CampusId = campusId,
                             MajorSubject = stream,
-                            CampusName = "Main Campus",
                             Gender = isFemale ? "Female" : "Male",
                             FatherName = fatherName,
                             CurrentAdress = $"House {(nameIndex % 90) + 1}, {area}",

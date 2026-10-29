@@ -56,6 +56,19 @@ builder.Services.AddAuthentication(options =>
                 context.Token = accessToken;
             }
             return Task.CompletedTask;
+        },
+        // A deactivated student's existing access token stops working immediately, not only at refresh
+        OnTokenValidated = async context =>
+        {
+            var principal = context.Principal;
+            if (principal == null || !principal.IsInRole("Student")) return;
+
+            var userId = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            if (await db.Students.AnyAsync(s => s.UserId == userId && !s.IsActive))
+            {
+                context.Fail("Student account is inactive.");
+            }
         }
     };
 });
@@ -85,6 +98,9 @@ builder.Services.AddScoped<IApplicableFeeService, ApplicableFeeService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+builder.Services.AddScoped<TeachingAccessService>();
+builder.Services.AddScoped(sp => new NamedLookupService<Cohort>(sp.GetRequiredService<ApplicationDbContext>(), s => s.CohortId, "cohort"));
+builder.Services.AddScoped(sp => new NamedLookupService<Campus>(sp.GetRequiredService<ApplicationDbContext>(), s => s.CampusId, "campus"));
 
 // Real-time notifications. Clients.User(...) targets the ClaimTypes.NameIdentifier claim (SignalR's default
 // user id), which TokenService sets to the Identity user id, so hub users match AnnouncementRecipient.UserId.

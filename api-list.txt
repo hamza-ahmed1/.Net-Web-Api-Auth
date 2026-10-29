@@ -154,3 +154,25 @@ Mobile app sessions
 - POST {BASE_URL}/api/auth/refresh   body { "refreshToken": "..." } when there is no cookie; returns a new access token.
   Mobile refresh tokens slide: each refresh extends them to 7 days from now. Locked-out (deactivated) users are refused.
 - POST {BASE_URL}/api/auth/logout    body { "refreshToken": "..." } revokes that device's token.
+
+
+Cohorts and campuses (Authorization required; changes are Admin only)
+- GET/POST {BASE_URL}/api/cohorts            { "name": "Cohort-2027", "isActive": true }   done using nextjs
+- PUT/DELETE {BASE_URL}/api/cohorts/{id}     delete only when no students are assigned   done using nextjs
+- GET/POST {BASE_URL}/api/campuses, PUT/DELETE {BASE_URL}/api/campuses/{id}   same rules   done using nextjs
+
+Students (create/update/status/delete/export: Admin only; a Student may only read their own record)
+- Required on create/update: studentCode (digits, max 10, unique), phoneNumber, fatherName, gender (Male|Female),
+  majorSubject, cohortId, campusId. Responses add studentCode, cohort, campus, majorSubject, gender, fatherName, isActive, status.
+- PUT {BASE_URL}/api/student/{id}/status     { "isActive": false }  inactive students cannot log in (login 403, refresh 401,
+  existing tokens rejected) and their saved mobile sign-ins are revoked   done using nextjs
+
+Exams and results
+- PUT {BASE_URL}/api/exam/{examId}/publish   { "isPublished": true }  only the teacher of that course-section   done using nextjs
+- Exam create/update/delete and result entry: Teacher/HOD who teaches that course-section only.
+- GET {BASE_URL}/api/examresult/student={studentId}   students: own results only; marks/remarks are null until published.
+  Each result includes exam.courseId / courseName / courseCode for filtering.
+
+Attendance and fees (students: own data only)
+- GET {BASE_URL}/api/attendance/student/{studentId}/courses   now includes courseCode and teacherName
+- GET {BASE_URL}/api/invoice/history/{studentId}   fee challans with month, year, dueDate, amount, amountPaid (mobile Fee Challan tab)

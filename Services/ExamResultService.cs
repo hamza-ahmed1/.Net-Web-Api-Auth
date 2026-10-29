@@ -342,14 +342,63 @@ namespace Auth.Services
             };
             return new OkObjectResult(resultDto);
         }
-        public async Task<IActionResult> GetExamsByStudentId(Guid studentId)
+        public async Task<IActionResult> GetExamsByStudentId(Guid studentId, bool withholdUnpublished)
         {
-            var examResults = await _context.ExamResults
+            var rows = await _context.ExamResults
+                .AsNoTracking()
                 .Where(er => er.StudentId == studentId)
-                .Include(er => er.Exam)
+                .OrderByDescending(er => er.Exam.ExamDate)
+                .Select(er => new
+                {
+                    er.ExamResultId,
+                    er.ExamId,
+                    er.StudentId,
+                    er.ObtainMarks,
+                    er.IsAbsent,
+                    er.Remarks,
+                    er.LastUpdate,
+                    er.Exam.Title,
+                    ExamType = er.Exam.ExamType != null ? er.Exam.ExamType.Type : null,
+                    er.Exam.TotalMarks,
+                    er.Exam.IsPublished,
+                    er.Exam.ExamDate,
+                    er.Exam.TeacherSectionCourseId,
+                    er.Exam.TeacherSectionCourse.CourseId,
+                    CourseName = er.Exam.TeacherSectionCourse.Course != null ? er.Exam.TeacherSectionCourse.Course.CourseName : string.Empty,
+                    CourseCode = er.Exam.TeacherSectionCourse.Course != null ? er.Exam.TeacherSectionCourse.Course.CourseCode : null
+                })
                 .ToListAsync();
 
-            return new OkObjectResult(examResults);
+            var results = rows.Select(r =>
+            {
+                var hidden = withholdUnpublished && !r.IsPublished;
+                return new StudentExamResultDto
+                {
+                    ExamResultId = r.ExamResultId,
+                    ExamId = r.ExamId,
+                    StudentId = r.StudentId,
+                    ObtainMarks = hidden ? null : r.ObtainMarks,
+                    IsAbsent = hidden ? null : r.IsAbsent,
+                    Remarks = hidden ? null : r.Remarks,
+                    LastUpdate = r.LastUpdate,
+                    IsPublished = r.IsPublished,
+                    Exam = new StudentExamInfoDto
+                    {
+                        ExamID = r.ExamId,
+                        Title = r.Title,
+                        ExamType = r.ExamType,
+                        TotalMarks = r.TotalMarks,
+                        IsPublished = r.IsPublished,
+                        ExamDate = r.ExamDate,
+                        TeacherSectionCourseId = r.TeacherSectionCourseId,
+                        CourseId = r.CourseId,
+                        CourseName = r.CourseName,
+                        CourseCode = r.CourseCode
+                    }
+                };
+            }).ToList();
+
+            return new OkObjectResult(results);
         }
         public async Task<IActionResult> UpdateExamResult(Guid examResultId, ExamResultCreateDto dto)
         {

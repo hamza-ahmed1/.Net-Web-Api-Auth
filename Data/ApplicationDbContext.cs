@@ -30,6 +30,8 @@ namespace Auth.Data
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementRecipient> AnnouncementRecipients { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<Cohort> Cohorts { get; set; }
+        public DbSet<Campus> Campuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -221,6 +223,36 @@ namespace Auth.Data
             .HasOne(s => s.Department)
             .WithMany(d => d.Students)
             .HasForeignKey(s => s.DepartmentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Student code: unique and digits only (1-10), enforced by the database as well as the API
+        builder.Entity<Student>()
+            .HasIndex(s => s.StudentCode)
+            .IsUnique();
+
+        builder.Entity<Student>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_Students_StudentCode_Digits",
+                "LEN([StudentCode]) BETWEEN 1 AND 10 AND [StudentCode] NOT LIKE '%[^0-9]%'"));
+
+        builder.Entity<Cohort>()
+            .HasIndex(c => c.Name)
+            .IsUnique();
+
+        builder.Entity<Campus>()
+            .HasIndex(c => c.Name)
+            .IsUnique();
+
+        builder.Entity<Student>()
+            .HasOne(s => s.Cohort)
+            .WithMany(c => c.Students)
+            .HasForeignKey(s => s.CohortId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Student>()
+            .HasOne(s => s.Campus)
+            .WithMany(c => c.Students)
+            .HasForeignKey(s => s.CampusId)
             .OnDelete(DeleteBehavior.Restrict);
     }
     }

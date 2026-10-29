@@ -21,3 +21,11 @@ namespace Auth.Model.DTOs.Exam
 
     }
 }
+
+namespace Auth.Model.DTOs.Exam
+{
+    public class PublishExamDto
+    {
+        public bool IsPublished { get; set; } = true;
+    }
+}

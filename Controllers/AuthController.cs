@@ -78,6 +78,12 @@
                     return Unauthorized(new { message = "Invalid credentials" });
                 }
 
+                // Checked after the password so account status isn't revealed to someone guessing
+                if (await IsInactiveStudentAsync(user.Id))
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = "Your student account is inactive. Please contact the campus administration." });
+                }
+
                 var accessToken = await _tokenService.GenerateAccessToken(user, _userManager);
                 var refreshToken = _tokenService.GenerateRefreshToken();
                 var roles = await _userManager.GetRolesAsync(user);
@@ -131,8 +137,8 @@
                 if (storedToken == null || storedToken.ExpiresAt < DateTime.UtcNow)
                     return Unauthorized();
 
-                // Deactivated accounts are locked out; stop issuing them tokens
-                if (await _userManager.IsLockedOutAsync(storedToken.User))
+                // Deactivated accounts (locked-out staff, inactive students) get no new tokens
+                if (await _userManager.IsLockedOutAsync(storedToken.User) || await IsInactiveStudentAsync(storedToken.UserId))
                     return Unauthorized();
 
                 var newAccessToken = await _tokenService.GenerateAccessToken(storedToken.User, _userManager);
@@ -276,6 +282,9 @@
 
         [HttpGet("test")]
         public IActionResult Test() => Ok("Server is alive");
+
+        private Task<bool> IsInactiveStudentAsync(string userId) =>
+            _db.Students.AnyAsync(s => s.UserId == userId && !s.IsActive);
 
         /// <summary>Mobile apps can't keep the httpOnly refresh cookie, so they opt in to receiving the token in the body.</summary>
         private bool IsMobileClient() =>

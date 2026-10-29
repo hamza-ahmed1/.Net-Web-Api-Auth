@@ -300,6 +300,56 @@ namespace Auth.Migrations
                     b.ToTable("Attendances");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.Campus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Campuses");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Cohort", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Cohorts");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.Course", b =>
                 {
                     b.Property<Guid>("CourseId")
@@ -623,17 +673,15 @@ namespace Auth.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Batch")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("CNIC")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("CampusName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid?>("CampusId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CohortId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("CurrentAdress")
                         .IsRequired()
@@ -656,6 +704,9 @@ namespace Auth.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("MajorSubject")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -664,18 +715,33 @@ namespace Auth.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("StudentCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("StudentId");
 
+                    b.HasIndex("CampusId");
+
+                    b.HasIndex("CohortId");
+
                     b.HasIndex("DepartmentId");
+
+                    b.HasIndex("StudentCode")
+                        .IsUnique();
 
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", t =>
+                        {
+                            t.HasCheckConstraint("CK_Students_StudentCode_Digits", "LEN([StudentCode]) BETWEEN 1 AND 10 AND [StudentCode] NOT LIKE '%[^0-9]%'");
+                        });
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.StudentEnrollments", b =>
@@ -1155,6 +1221,16 @@ namespace Auth.Migrations
 
             modelBuilder.Entity("Auth.Model.Entities.Student", b =>
                 {
+                    b.HasOne("Auth.Model.Entities.Campus", "Campus")
+                        .WithMany("Students")
+                        .HasForeignKey("CampusId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Auth.Model.Entities.Cohort", "Cohort")
+                        .WithMany("Students")
+                        .HasForeignKey("CohortId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Auth.Model.Entities.Department", "Department")
                         .WithMany("Students")
                         .HasForeignKey("DepartmentId")
@@ -1165,6 +1241,10 @@ namespace Auth.Migrations
                         .HasForeignKey("Auth.Model.Entities.Student", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Campus");
+
+                    b.Navigation("Cohort");
 
                     b.Navigation("Department");
 
@@ -1309,6 +1389,16 @@ namespace Auth.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Teachers");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Campus", b =>
+                {
+                    b.Navigation("Students");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Cohort", b =>
+                {
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.Course", b =>

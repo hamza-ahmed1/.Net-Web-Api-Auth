@@ -18,12 +18,15 @@ namespace Auth.Controllers.Common
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IInvoiceService _invoiceService;
+        private readonly TeachingAccessService _access;
         public InvoiceController(
             IInvoiceService invoiceService,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            TeachingAccessService access)
         {
             _invoiceService = invoiceService;
             _userManager = userManager;
+            _access = access;
         }
 
 
@@ -79,15 +82,31 @@ namespace Auth.Controllers.Common
         [HttpGet("pending/{studentId}")]
         public async Task<IActionResult> GetPendingFees(Guid studentId)
         {
+            if (!await CanReadStudentAsync(studentId))
+                return Forbid();
+
             var result = await _invoiceService.GetPendingFeeForStudent(studentId);
             return result;
         }
 
+        /// <summary>A student's challans (month, due date, amounts). Students may only read their own.</summary>
         [HttpGet("history/{studentId}")]
         public async Task<IActionResult> GetInvoiceHistory(Guid studentId)
         {
+            if (!await CanReadStudentAsync(studentId))
+                return Forbid();
+
             var result = await _invoiceService.GetInvoiceForStudent(studentId);
             return result;
+        }
+
+        private async Task<bool> CanReadStudentAsync(Guid studentId)
+        {
+            if (User.IsInRole("Admin") || User.IsInRole("HOD") || User.IsInRole("Teacher"))
+                return true;
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            return await _access.StudentIdForUserAsync(userId) == studentId;
         }
     }
 }

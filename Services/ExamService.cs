@@ -66,6 +66,27 @@ namespace Auth.Services
             return new OkObjectResult(new { message = "Exam updated successfully." });
         }
 
+        /// <summary>Publishes (or unpublishes) an exam's results; students only see marks of published exams.</summary>
+        public async Task<IActionResult> SetPublishedAsync(Guid examId, bool isPublished)
+        {
+            var exam = await _context.Exams.FindAsync(examId);
+            if (exam == null)
+            {
+                return new NotFoundObjectResult(new { message = "Exam not found." });
+            }
+
+            exam.IsPublished = isPublished;
+            exam.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return new OkObjectResult(new
+            {
+                examId = exam.ExamID,
+                isPublished = exam.IsPublished,
+                message = isPublished ? "Results published. Students can now see their marks." : "Results unpublished."
+            });
+        }
+
         public async Task<IActionResult> DeleteExam(Guid examId)
         {
             var exam = await _context.Exams.FindAsync(examId);

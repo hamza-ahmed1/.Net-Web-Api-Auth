@@ -12,7 +12,7 @@ namespace Auth.Services.Interfaces
         public Task<IActionResult> UpdateBulkResult(List<ExamResultCreateDto> dtos);
         public Task<IActionResult> UpdateExamResult(Guid examResultId, ExamResultCreateDto dto);
         public Task<IActionResult> GetExamResultById(Guid examResultId);
-        public Task<IActionResult> GetExamsByStudentId(Guid studentId);
+        public Task<IActionResult> GetExamsByStudentId(Guid studentId, bool withholdUnpublished);
         public Task DeleteExamResultById(Guid examResultId);
         public Task<IActionResult> GetExamResultsByExamId(Guid examId);
     }

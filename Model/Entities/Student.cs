@@ -18,11 +18,25 @@ namespace Auth.Model.Entities
         public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
         public string CNIC { get; set; } = string.Empty;
 
-        public string Batch { get; set; } = string.Empty;
+        /// <summary>Institution-issued student code: unique, 1-10 digits (e.g. "2001061").</summary>
+        [Required]
+        [StringLength(10)]
+        public string StudentCode { get; set; } = string.Empty;
+
+        /// <summary>Inactive students cannot sign in.</summary>
+        public bool IsActive { get; set; } = true;
+
+        public Guid? CohortId { get; set; }
+
+        [ForeignKey(nameof(CohortId))]
+        public Cohort? Cohort { get; set; }
+
+        public Guid? CampusId { get; set; }
+
+        [ForeignKey(nameof(CampusId))]
+        public Campus? Campus { get; set; }
 
         public string MajorSubject { get; set; } = string.Empty;
-
-        public string CampusName { get; set; } = string.Empty;
 
         public string Gender { get; set; } = string.Empty;
 

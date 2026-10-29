@@ -9,6 +9,7 @@ namespace Auth.Services.Interfaces
         public Task<IActionResult> GetAllExamByTeacherSection(Guid id);
         public Task<IActionResult> UpdateExam(Guid examId, CreateExamDto examDto);
         public Task<IActionResult> DeleteExam(Guid examId);
+        public Task<IActionResult> SetPublishedAsync(Guid examId, bool isPublished);
 
         public Task<IActionResult> GetExamByTeacherId(Guid teacher_id);
 

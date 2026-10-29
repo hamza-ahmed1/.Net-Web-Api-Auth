@@ -76,7 +76,9 @@ namespace Auth.Model.DTOs.Attendance
         public Guid TeacherSectionCourseId { get; set; }
         public Guid CourseId { get; set; }
         public string? CourseName { get; set; }
+        public string? CourseCode { get; set; }
         public Guid TeacherId { get; set; }
+        public string? TeacherName { get; set; }
         public Guid SectionId { get; set; }
         public string? SectionName { get; set; }
     }

@@ -28,6 +28,7 @@ namespace Auth.Services
         {
             var invoices = await _context.Invoices
     .Where(i => i.StudentId == studentId)
+    .OrderByDescending(i => i.DueDate)
     .Include(i => i.Student)
     .Include(i => i.feeType)
     .Select(i => new InvoiceDetailsDto

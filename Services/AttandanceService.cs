@@ -258,10 +258,13 @@ namespace Auth.Services
                     TeacherSectionCourseId = t.TeacherSectionCourseId,
                     CourseId = t.CourseId,
                     CourseName = t.Course!.CourseName,
+                    CourseCode = t.Course!.CourseCode,
                     TeacherId = t.TeacherId,
+                    TeacherName = t.Teacher != null ? t.Teacher.User.FullName : null,
                     SectionId = t.SectionId,
                     SectionName = t.Section!.SectionName
                 })
+                .OrderBy(c => c.CourseName)
                 .ToListAsync();
         }
 

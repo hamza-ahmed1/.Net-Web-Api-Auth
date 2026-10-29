@@ -1,4 +1,5 @@
-﻿using Auth.Data;
+﻿using System.Linq.Expressions;
+using Auth.Data;
 using Auth.Model.DTOs.Student;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
@@ -6,7 +7,6 @@ using ClosedXML.Excel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using ClosedXML.Excel;
 
 namespace Auth.Services
 {
@@ -20,6 +20,38 @@ namespace Auth.Services
             _context = applicationDbContext;
             _userManager = userManager;
         }
+
+        /// <summary>Single projection used by every read so all endpoints return the same student shape.</summary>
+        private static readonly Expression<Func<Student, StudentDto>> ToDto = s => new StudentDto
+        {
+            StudentId = s.StudentId,
+            UserId = s.UserId,
+            StudentCode = s.StudentCode,
+            FullName = s.User.FullName,
+            Email = s.User.Email,
+            PhoneNumber = s.User.PhoneNumber,
+            DateOfBirth = s.DateOfBirth,
+            EnrollmentDate = s.EnrollmentDate,
+            CNIC = s.CNIC,
+            DepartmentId = s.DepartmentId,
+            Department = s.Department != null ? s.Department.Name : string.Empty,
+            CohortId = s.CohortId,
+            Cohort = s.Cohort != null ? s.Cohort.Name : string.Empty,
+            CampusId = s.CampusId,
+            Campus = s.Campus != null ? s.Campus.Name : string.Empty,
+            MajorSubject = s.MajorSubject,
+            Gender = s.Gender,
+            FatherName = s.FatherName,
+            IsActive = s.IsActive,
+            SectionId = s.StudentEnrollments
+                .Where(e => e.IsActive)
+                .Select(e => (Guid?)e.SectionId)
+                .FirstOrDefault(),
+            Section = s.StudentEnrollments
+                .Where(e => e.IsActive && e.EnrolledSection != null)
+                .Select(e => e.EnrolledSection!.IntermediateClass + " - " + e.EnrolledSection.SectionName)
+                .FirstOrDefault() ?? string.Empty
+        };
 
         public async Task<IActionResult> CreateStudent(StudentCreateDto studentCreateDto)
         {
@@ -40,6 +72,10 @@ namespace Auth.Services
             if (!await IsActiveDepartmentAsync(studentCreateDto.DepartmentId))
                 return new BadRequestObjectResult("Choose a valid, active department.");
 
+            var profileError = await ValidateProfileAsync(studentCreateDto, null);
+            if (profileError != null)
+                return profileError;
+
             var strategy = _context.Database.CreateExecutionStrategy();
 
             return await strategy.ExecuteAsync<IActionResult>(async () =>
@@ -52,8 +88,8 @@ namespace Auth.Services
                     {
                         UserName = studentCreateDto.Email,
                         Email = studentCreateDto.Email,
-                        PhoneNumber = studentCreateDto.PhoneNumber,
-                        FullName = studentCreateDto.FullName
+                        PhoneNumber = studentCreateDto.PhoneNumber.Trim(),
+                        FullName = studentCreateDto.FullName.Trim()
                     };
 
                     var result = await _userManager.CreateAsync(applicationUser, "DefaultPassword123!");
@@ -75,11 +111,11 @@ namespace Auth.Services
                     var student = new Student
                     {
                         UserId = applicationUser.Id,
-                        DateOfBirth = studentCreateDto.DateOfBirth,
                         EnrollmentDate = studentCreateDto.EnrollmentDate,
-                        CNIC = studentCreateDto.CNIC,
-                        DepartmentId = studentCreateDto.DepartmentId
+                        DepartmentId = studentCreateDto.DepartmentId,
+                        IsActive = true
                     };
+                    ApplyProfile(student, studentCreateDto);
 
                     _context.Students.Add(student);
 
@@ -95,19 +131,12 @@ namespace Auth.Services
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
-                    var studentDto = new StudentDto
-                    {
-                        StudentId = student.StudentId,
-                        UserId = applicationUser.Id,
-                        FullName = applicationUser.FullName,
-                        Email = applicationUser.Email,
-                        PhoneNumber = applicationUser.PhoneNumber,
-                        DateOfBirth = student.DateOfBirth,
-                        EnrollmentDate = student.EnrollmentDate,
-                        CNIC = student.CNIC,
-                    };
-
-                    return new OkObjectResult(studentDto);
+                    return new OkObjectResult(await GetDtoAsync(student.StudentId));
+                }
+                catch (DbUpdateException ex) when (IsUniqueCodeViolation(ex))
+                {
+                    await transaction.RollbackAsync();
+                    return DuplicateCode(studentCreateDto.StudentCode);
                 }
                 catch (Exception)
                 {
@@ -117,84 +146,24 @@ namespace Auth.Services
             });
         }
 
-        private static string FormatSectionLabel(Section? section)
-        {
-            if (section == null) return string.Empty;
-            if (string.IsNullOrWhiteSpace(section.IntermediateClass))
-                return section.SectionName;
-            return $"{section.IntermediateClass} - {section.SectionName}";
-        }
-
         public async Task<List<StudentDto>> GetAllStudents()
         {
             return await _context.Students
-                .Include(s => s.User)
-                .Select(s => new StudentDto
-                {
-                    StudentId = s.StudentId,
-                    UserId = s.UserId,
-                    FullName = s.User.FullName,
-                    Email = s.User.Email,
-                    PhoneNumber = s.User.PhoneNumber,
-                    DateOfBirth = s.DateOfBirth,
-                    EnrollmentDate = s.EnrollmentDate,
-                    CNIC = s.CNIC,
-                    DepartmentId = s.DepartmentId,
-                    Department = s.Department != null ? s.Department.Name : string.Empty,
-                    SectionId = s.StudentEnrollments
-                        .Where(e => e.IsActive)
-                        .Select(e => (Guid?)e.SectionId)
-                        .FirstOrDefault(),
-                    Section = s.StudentEnrollments
-                        .Where(e => e.IsActive && e.EnrolledSection != null)
-                        .Select(e => e.EnrolledSection!.IntermediateClass + " - " + e.EnrolledSection.SectionName)
-                        .FirstOrDefault() ?? string.Empty
-                })
+                .AsNoTracking()
+                .OrderBy(s => s.StudentCode)
+                .Select(ToDto)
                 .ToListAsync();
         }
 
         public async Task<StudentDto?> GetStudentById(string studentId)
         {
-            Student? student = null;
-            if (Guid.TryParse(studentId, out var guid))
-            {
-                student = await _context.Students
-                    .Include(s => s.User)
-                    .Include(s => s.Department)
-                    .Include(s => s.StudentEnrollments)
-                        .ThenInclude(se => se.EnrolledSection)
-                    .FirstOrDefaultAsync(s => s.StudentId == guid || s.UserId == studentId);
-            }
-            else
-            {
-                student = await _context.Students
-                    .Include(s => s.User)
-                    .Include(s => s.Department)
-                    .Include(s => s.StudentEnrollments)
-                        .ThenInclude(se => se.EnrolledSection)
-                    .FirstOrDefaultAsync(s => s.UserId == studentId);
-            }
+            // Accepts a StudentId or the Identity user id (the mobile app signs in with the latter)
+            var query = _context.Students.AsNoTracking();
+            query = Guid.TryParse(studentId, out var guid)
+                ? query.Where(s => s.StudentId == guid || s.UserId == studentId)
+                : query.Where(s => s.UserId == studentId);
 
-            if (student == null) return null;
-
-            var enrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
-                ?? student.StudentEnrollments.FirstOrDefault();
-
-            return new StudentDto
-            {
-                StudentId = student.StudentId,
-                UserId = student.UserId,
-                FullName = student.User.FullName,
-                Email = student.User.Email,
-                PhoneNumber = student.User.PhoneNumber,
-                DateOfBirth = student.DateOfBirth,
-                EnrollmentDate = student.EnrollmentDate,
-                CNIC = student.CNIC,
-                DepartmentId = student.DepartmentId,
-                Department = student.Department?.Name ?? string.Empty,
-                SectionId = enrollment?.SectionId,
-                Section = FormatSectionLabel(enrollment?.EnrolledSection)
-            };
+            return await query.Select(ToDto).FirstOrDefaultAsync();
         }
 
         public async Task<IActionResult> UpdateStudent(Guid studentId, StudentUpdateDto dto)
@@ -202,7 +171,6 @@ namespace Auth.Services
             var student = await _context.Students
                 .Include(s => s.User)
                 .Include(s => s.StudentEnrollments)
-                    .ThenInclude(se => se.EnrolledSection)
                 .FirstOrDefaultAsync(s => s.StudentId == studentId);
 
             if (student == null)
@@ -216,14 +184,17 @@ namespace Auth.Services
                 student.DepartmentId = dto.DepartmentId;
             }
 
-            student.DateOfBirth = dto.DateOfBirth;
+            var profileError = await ValidateProfileAsync(dto, student);
+            if (profileError != null)
+                return profileError;
+
+            ApplyProfile(student, dto);
             student.EnrollmentDate = dto.EnrollmentDate;
-            student.CNIC = dto.CNIC;
 
             if (student.User != null)
             {
-                student.User.FullName = dto.FullName;
-                student.User.PhoneNumber = dto.PhoneNumber;
+                student.User.FullName = dto.FullName.Trim();
+                student.User.PhoneNumber = dto.PhoneNumber.Trim();
                 if (!string.IsNullOrWhiteSpace(dto.Email) && student.User.Email != dto.Email)
                 {
                     student.User.Email = dto.Email;
@@ -265,34 +236,77 @@ namespace Auth.Services
                 }
             }
 
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueCodeViolation(ex))
+            {
+                return DuplicateCode(dto.StudentCode);
+            }
+
+            return new OkObjectResult(await GetDtoAsync(student.StudentId));
+        }
+
+        /// <summary>Activates or deactivates a student. Deactivating also revokes saved sign-ins (mobile refresh tokens).</summary>
+        public async Task<IActionResult> SetStudentStatus(Guid studentId, bool isActive)
+        {
+            var student = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == studentId);
+            if (student == null)
+                return new NotFoundObjectResult("Student not found.");
+
+            student.IsActive = isActive;
+            if (!isActive)
+            {
+                await _context.RefreshTokens
+                    .Where(t => t.UserId == student.UserId && !t.IsRevoked)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsRevoked, true));
+            }
             await _context.SaveChangesAsync();
 
-            await _context.Entry(student).Collection(s => s.StudentEnrollments).Query()
-                .Include(se => se.EnrolledSection)
-                .LoadAsync();
-
-            var activeEnrollment = student.StudentEnrollments.FirstOrDefault(e => e.IsActive)
-                ?? student.StudentEnrollments.FirstOrDefault();
-            await _context.Entry(student).Reference(s => s.Department).LoadAsync();
-
-            var updated = new StudentDto
-            {
-                StudentId = student.StudentId,
-                UserId = student.UserId,
-                FullName = student.User?.FullName,
-                Email = student.User?.Email,
-                PhoneNumber = student.User?.PhoneNumber,
-                DateOfBirth = student.DateOfBirth,
-                EnrollmentDate = student.EnrollmentDate,
-                CNIC = student.CNIC,
-                DepartmentId = student.DepartmentId,
-                Department = student.Department?.Name ?? string.Empty,
-                SectionId = activeEnrollment?.SectionId,
-                Section = FormatSectionLabel(activeEnrollment?.EnrolledSection)
-            };
-
-            return new OkObjectResult(updated);
+            return new OkObjectResult(await GetDtoAsync(studentId));
         }
+
+        private Task<StudentDto?> GetDtoAsync(Guid studentId)
+        {
+            return _context.Students.AsNoTracking().Where(s => s.StudentId == studentId).Select(ToDto).FirstOrDefaultAsync();
+        }
+
+        /// <summary>Checks the code is free and the cohort/campus exist and are active (keeping a current, since-deactivated one is allowed).</summary>
+        private async Task<IActionResult?> ValidateProfileAsync(StudentProfileFieldsDto dto, Student? existing)
+        {
+            var code = dto.StudentCode.Trim();
+            var takenBy = existing?.StudentId;
+            if (await _context.Students.AnyAsync(s => s.StudentCode == code && s.StudentId != takenBy))
+                return DuplicateCode(code);
+
+            if (dto.CohortId != existing?.CohortId && !await _context.Cohorts.AnyAsync(c => c.Id == dto.CohortId && c.IsActive))
+                return new BadRequestObjectResult(new { message = "Choose a valid, active cohort." });
+
+            if (dto.CampusId != existing?.CampusId && !await _context.Campuses.AnyAsync(c => c.Id == dto.CampusId && c.IsActive))
+                return new BadRequestObjectResult(new { message = "Choose a valid, active campus." });
+
+            return null;
+        }
+
+        private static void ApplyProfile(Student student, StudentProfileFieldsDto dto)
+        {
+            student.StudentCode = dto.StudentCode.Trim();
+            student.CohortId = dto.CohortId;
+            student.CampusId = dto.CampusId;
+            student.MajorSubject = dto.MajorSubject.Trim();
+            student.Gender = dto.Gender;
+            student.FatherName = dto.FatherName.Trim();
+            student.DateOfBirth = dto.DateOfBirth;
+            student.CNIC = dto.CNIC;
+        }
+
+        private static IActionResult DuplicateCode(string code) =>
+            new ConflictObjectResult(new { message = $"Student code {code.Trim()} is already assigned to another student." });
+
+        // The unique index is the final guard if two requests race past the AnyAsync check
+        private static bool IsUniqueCodeViolation(DbUpdateException ex) =>
+            ex.InnerException?.Message.Contains("IX_Students_StudentCode") == true;
 
         private Task<bool> IsActiveDepartmentAsync(Guid departmentId)
         {
@@ -323,7 +337,7 @@ namespace Auth.Services
                     StudentId = s.StudentId,
                     EnrollmentId = s.StudentEnrollments.First(e => e.SectionId == sectionId).StudentEnrollmentId,
                     FullName = s.User.FullName
-                    
+
                 })
                 .ToListAsync();
 
@@ -337,11 +351,13 @@ namespace Auth.Services
                 .Select(s => new StudentDto
                 {
                     StudentId = s.StudentId,
+                    StudentCode = s.StudentCode,
                     FullName = s.User.FullName,
                     CNIC=s.CNIC,
                     DateOfBirth=s.DateOfBirth,
                     Email=s.User.Email,
                     PhoneNumber=s.User.PhoneNumber,
+                    IsActive = s.IsActive,
                    SectionId = sectionId,
                    Section = s.StudentEnrollments.First(e => e.SectionId == sectionId).EnrolledSection.IntermediateClass
                         + " - "
@@ -356,17 +372,9 @@ namespace Auth.Services
         public async Task<IActionResult> ExportStudentsToExcel()
         {
             var students = await _context.Students
-                .Include(s => s.User)
-                .Select(s => new
-                {
-                    s.StudentId,
-                    FullName = s.User.FullName,
-                    Email = s.User.Email,
-                    PhoneNumber = s.User.PhoneNumber,
-                    s.DateOfBirth,
-                    s.EnrollmentDate,
-                    s.CNIC
-                })
+                .AsNoTracking()
+                .OrderBy(s => s.StudentCode)
+                .Select(ToDto)
                 .ToListAsync();
 
             using var workbook = new XLWorkbook();
@@ -374,13 +382,11 @@ namespace Auth.Services
             var worksheet = workbook.Worksheets.Add("Students");
 
             // Headers
-            worksheet.Cell(1, 1).Value = "StudentId";
-            worksheet.Cell(1, 2).Value = "FullName";
-            worksheet.Cell(1, 3).Value = "Email";
-            worksheet.Cell(1, 4).Value = "PhoneNumber";
-            worksheet.Cell(1, 5).Value = "DateOfBirth";
-            worksheet.Cell(1, 6).Value = "EnrollmentDate";
-            worksheet.Cell(1, 7).Value = "CNIC";
+            string[] headers = { "Student Code", "Full Name", "Email", "Phone Number", "Father's Name", "Gender", "Major Subject", "Cohort", "Campus", "Section", "Status", "Date of Birth", "Enrollment Date", "CNIC" };
+            for (int c = 0; c < headers.Length; c++)
+            {
+                worksheet.Cell(1, c + 1).Value = headers[c];
+            }
 
             // Data
             for (int i = 0; i < students.Count; i++)
@@ -388,13 +394,20 @@ namespace Auth.Services
                 var student = students[i];
                 var row = i + 2;
 
-                worksheet.Cell(row, 1).Value = student.StudentId.ToString();
+                worksheet.Cell(row, 1).Value = student.StudentCode;
                 worksheet.Cell(row, 2).Value = student.FullName;
                 worksheet.Cell(row, 3).Value = student.Email;
                 worksheet.Cell(row, 4).Value = student.PhoneNumber;
-                worksheet.Cell(row, 5).Value = student.DateOfBirth;
-                worksheet.Cell(row, 6).Value = student.EnrollmentDate;
-                worksheet.Cell(row, 7).Value = student.CNIC;
+                worksheet.Cell(row, 5).Value = student.FatherName;
+                worksheet.Cell(row, 6).Value = student.Gender;
+                worksheet.Cell(row, 7).Value = student.MajorSubject;
+                worksheet.Cell(row, 8).Value = student.Cohort;
+                worksheet.Cell(row, 9).Value = student.Campus;
+                worksheet.Cell(row, 10).Value = student.Section;
+                worksheet.Cell(row, 11).Value = student.Status;
+                worksheet.Cell(row, 12).Value = student.DateOfBirth;
+                worksheet.Cell(row, 13).Value = student.EnrollmentDate;
+                worksheet.Cell(row, 14).Value = student.CNIC;
             }
 
             // Format headers

@@ -1,4 +1,6 @@
-﻿using Auth.Model.DTOs.Exam;
+﻿using System.Security.Claims;
+using Auth.Model.DTOs.Exam;
+using Auth.Services;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,17 +9,30 @@ namespace Auth.Controllers.Teacher
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Admin,HOD,Teacher")]
     public class ExamController : ControllerBase
     {
         private readonly IExamService _examService;
-        public ExamController(IExamService examService)
+        private readonly TeachingAccessService _access;
+
+        public ExamController(IExamService examService, TeachingAccessService access)
         {
             _examService = examService;
+            _access = access;
         }
+
+        private string CurrentUserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        private IActionResult NotYourCourse() =>
+            StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only manage exams for courses you teach." });
+
         [HttpPost]
+        [Authorize(Roles = "HOD,Teacher")]
         public async Task<IActionResult> CreateExam([FromBody] CreateExamDto examDto)
         {
+            if (!await _access.OwnsAssignmentAsync(CurrentUserId, examDto.TeacherSectionCourseId))
+                return NotYourCourse();
+
             try
             {
                 var result = await _examService.CreateExam(examDto);
@@ -47,8 +62,13 @@ namespace Auth.Controllers.Teacher
         }
 
         [HttpPut("{examId}")]
+        [Authorize(Roles = "HOD,Teacher")]
         public async Task<IActionResult> UpdateExam(Guid examId, [FromBody] CreateExamDto examDto)
         {
+            // Must own the exam now and the assignment it is moved to
+            if (!await _access.OwnsExamAsync(CurrentUserId, examId) || !await _access.OwnsAssignmentAsync(CurrentUserId, examDto.TeacherSectionCourseId))
+                return NotYourCourse();
+
             try
             {
                 var result = await _examService.UpdateExam(examId, examDto);
@@ -60,9 +80,24 @@ namespace Auth.Controllers.Teacher
             }
         }
 
+        /// <summary>Publishes or unpublishes an exam's results. Only the teacher of that course-section may do this.</summary>
+        [HttpPut("{examId:guid}/publish")]
+        [Authorize(Roles = "HOD,Teacher")]
+        public async Task<IActionResult> PublishExam(Guid examId, [FromBody] PublishExamDto dto)
+        {
+            if (!await _access.OwnsExamAsync(CurrentUserId, examId))
+                return NotYourCourse();
+
+            return await _examService.SetPublishedAsync(examId, dto.IsPublished);
+        }
+
         [HttpDelete("{examId}")]
+        [Authorize(Roles = "HOD,Teacher")]
         public async Task<IActionResult> DeleteExam(Guid examId)
         {
+            if (!await _access.OwnsExamAsync(CurrentUserId, examId))
+                return NotYourCourse();
+
             try
             {
                 var result = await _examService.DeleteExam(examId);
@@ -90,6 +125,6 @@ namespace Auth.Controllers.Teacher
         }
 
 
-      
+
     }
 }
