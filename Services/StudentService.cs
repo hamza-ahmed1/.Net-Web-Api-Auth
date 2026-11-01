@@ -320,6 +320,20 @@ namespace Auth.Services
                 return new NotFoundObjectResult("Student not found.");
 
             var enrollments = _context.StudentEnrollments.Where(e => e.StudentId == studentId);
+
+            // Fee records must survive, so a billed student is deactivated rather than deleted
+            var hasFeeHistory = await _context.Invoices.AnyAsync(i => i.StudentId == studentId)
+                || await _context.ApplicableFees.AnyAsync(a => a.StudentId == studentId);
+            if (hasFeeHistory)
+            {
+                student.IsActive = false;
+                await enrollments.Where(e => e.IsActive).ExecuteUpdateAsync(e => e
+                    .SetProperty(x => x.IsActive, false)
+                    .SetProperty(x => x.WithdrawnDate, DateTime.UtcNow));
+                await _context.SaveChangesAsync();
+                return new OkObjectResult(new { message = "This student has fee records, so they were deactivated instead of deleted.", deactivated = true });
+            }
+
             _context.StudentEnrollments.RemoveRange(enrollments);
 
             _context.Students.Remove(student);

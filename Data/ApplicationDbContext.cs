@@ -27,9 +27,11 @@ namespace Auth.Data
         public DbSet<ApplicableFee> ApplicableFees { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<TransactionHistory> TransactionHistories { get; set; }
+        public DbSet<InvoiceAdjustment> InvoiceAdjustments { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<AnnouncementRecipient> AnnouncementRecipients { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<EmailConfiguration> EmailConfigurations { get; set; }
         public DbSet<Cohort> Cohorts { get; set; }
         public DbSet<Campus> Campuses { get; set; }
 
@@ -90,12 +92,44 @@ namespace Auth.Data
             // Fee : Properties configuration for decimal precision
             builder.Entity<FeeType>().Property(f => f.Amount).HasColumnType("decimal(10,2)");
             builder.Entity<Invoice>().Property(i => i.AmountPaid).HasColumnType("decimal(10,2)");
+            builder.Entity<Invoice>().Property(i => i.Discount).HasColumnType("decimal(10,2)");
+            builder.Entity<Invoice>().Property(i => i.LateFee).HasColumnType("decimal(10,2)");
+            builder.Entity<InvoiceAdjustment>().Property(a => a.Amount).HasColumnType("decimal(10,2)");
 
             builder.Entity<TransactionHistory>().Property(t => t.Amount).HasColumnType("decimal(10,2)");
 
             // Fee:
             // Unique constraint on invoice number — prevents duplicate invoice numbers
-    
+            builder.HasSequence<long>("InvoiceNumbers");
+            builder.Entity<Invoice>().Property(i => i.InvoiceNum).HasMaxLength(30);
+            builder.Entity<Invoice>().HasIndex(i => i.InvoiceNum).IsUnique();
+
+            // One live invoice per student, fee and period; a cancelled invoice can be billed again
+            builder.Entity<Invoice>().Property(i => i.Month).HasMaxLength(20);
+            builder.Entity<Invoice>().Property(i => i.Year).HasMaxLength(10);
+            builder.Entity<Invoice>()
+                .HasIndex(i => new { i.StudentId, i.FeeTypeId, i.Month, i.Year })
+                .IsUnique()
+                .HasFilter("[IsVoided] = 0");
+
+            // A reference can only be used once, so a double-submitted payment is recorded once
+            builder.Entity<TransactionHistory>()
+                .HasIndex(t => t.TransactionReference)
+                .IsUnique()
+                .HasFilter("[TransactionReference] <> ''");
+            builder.Entity<TransactionHistory>()
+                .HasIndex(t => t.ReversesTransactionId)
+                .IsUnique();
+
+            builder.Entity<FeeCategory>().HasIndex(c => c.Name).IsUnique();
+            builder.Entity<FeeType>().HasIndex(f => new { f.FeeCategoryId, f.Name }).IsUnique();
+            builder.Entity<ApplicableFee>().HasIndex(a => new { a.StudentId, a.FeeTypeId }).IsUnique();
+
+            builder.Entity<InvoiceAdjustment>()
+                .HasOne(a => a.Invoice)
+                .WithMany(i => i.Adjustments)
+                .HasForeignKey(a => a.InvoiceId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Prevent accidental cascade-delete chains across financial records —
             // deleting a student should NOT silently delete their payment history
@@ -108,9 +142,6 @@ namespace Auth.Data
                 .HasOne(i => i.Student)
                 .WithMany()
                 .OnDelete(DeleteBehavior.Restrict);
-            builder.Entity<ApplicableFee>()
-                .Property(x => x.Status)
-                .HasConversion<string>();
 
             // TransactionHistory -> Invoice: invoice can have many transaction history records
             // Invoice currently doesn't declare a collection navigation property, so configure the relationship
@@ -119,7 +150,7 @@ namespace Auth.Data
                 .HasOne(th => th.Invoice)
                 .WithMany()
                 .HasForeignKey(th => th.InvoiceId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
             builder.Entity<IdentityRole>().HasData(
         new IdentityRole
         {

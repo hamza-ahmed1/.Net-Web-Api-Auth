@@ -1,4 +1,6 @@
-﻿using Auth.Data;
+﻿using System.Linq.Expressions;
+using Auth.Data;
+using Auth.Model.DTOs;
 using Auth.Model.Entities;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
@@ -9,162 +11,178 @@ namespace Auth.Services
     public class ApplicableFeeService : IApplicableFeeService
     {
         private readonly ApplicationDbContext _context;
-        public ApplicableFeeService(ApplicationDbContext context)
+        private readonly FeeAccessService _access;
+
+        public ApplicableFeeService(ApplicationDbContext context, FeeAccessService access)
         {
             _context = context;
-        }
-        public async Task<IActionResult> CreateApplicableFee(Model.DTOs.ApplicableFeeDto applicableFeeDto)
-        {
-
-                // Create new applicable fee
-                var newApplicableFee = new Model.Entities.ApplicableFee
-                {
-                    StudentId = applicableFeeDto.StudentId,
-                    FeeTypeId = applicableFeeDto.FeeTypeId,
-                    Status= FeeStatus.Pending,
-                };
-                await _context.ApplicableFees.AddAsync(newApplicableFee);
-                await _context.SaveChangesAsync();
-                return new OkObjectResult(new { message = "Applicable fee created successfully", IsSucceed = true });
-            
-
+            _access = access;
         }
 
-        public async Task<IActionResult> ApplyFeeBulk(List<Model.DTOs.ApplicableFeeDto> applicableFeeDtos)
+        private static readonly Expression<Func<ApplicableFee, ApplicableFeeWithDetailsDto>> ToDetails = af => new ApplicableFeeWithDetailsDto
         {
-            var applicableFees = new List<Model.Entities.ApplicableFee>();
-            foreach (var dto in applicableFeeDtos)
+            AfId = af.AfId,
+            StudentId = af.StudentId,
+            StudentName = af.Student!.User.FullName,
+            FeeTypeId = af.FeeTypeId,
+            FeeTypeName = af.FeeType!.Name,
+            Amount = af.FeeType.Amount,
+            Currency = af.FeeType.Currency,
+            Per = af.FeeType.Per,
+            AcademicTerm = af.FeeType.AcademicTerm,
+            CreatedAt = af.CreatedAt
+        };
+
+        private IQueryable<ApplicableFee> InScope(FeeScope scope)
+        {
+            var students = _access.Students(scope);
+            return _context.ApplicableFees.AsNoTracking().Where(af => students.Any(s => s.StudentId == af.StudentId));
+        }
+
+        public async Task<IActionResult> CreateApplicableFee(ApplicableFeeDto applicableFeeDto, FeeScope scope)
+        {
+            var problem = await FindProblemAsync(applicableFeeDto, scope);
+            if (problem != null)
+                return new BadRequestObjectResult(new { message = problem });
+
+            _context.ApplicableFees.Add(new ApplicableFee { StudentId = applicableFeeDto.StudentId, FeeTypeId = applicableFeeDto.FeeTypeId });
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(new { message = "Applicable fee created successfully", IsSucceed = true });
+        }
+
+        public async Task<IActionResult> ApplyFeeBulk(List<ApplicableFeeDto> applicableFeeDtos, FeeScope scope)
+        {
+            var created = 0;
+            var skipped = new List<SkippedFee>();
+            foreach (var dto in applicableFeeDtos.DistinctBy(d => (d.StudentId, d.FeeTypeId)))
             {
-                // Check if the combination of StudentId and FeeTypeId already exists
-                var existingApplicableFee = await _context.ApplicableFees
-                    .FirstOrDefaultAsync(af => af.StudentId == dto.StudentId && af.FeeTypeId == dto.FeeTypeId);
-                if (existingApplicableFee != null)
+                var problem = await FindProblemAsync(dto, scope);
+                if (problem != null)
                 {
-                    // Skip this entry if it already exists
+                    skipped.Add(new SkippedFee(dto.StudentId, string.Empty, string.Empty, problem));
                     continue;
                 }
-                // Create new applicable fee
-                var newApplicableFee = new Model.Entities.ApplicableFee
-                {
-                    StudentId = dto.StudentId,
-                    FeeTypeId = dto.FeeTypeId,
-                    Status = FeeStatus.Pending,
-                };
-                applicableFees.Add(newApplicableFee);
+                _context.ApplicableFees.Add(new ApplicableFee { StudentId = dto.StudentId, FeeTypeId = dto.FeeTypeId });
+                created++;
             }
-            if (applicableFees.Count > 0)
-            {
-                await _context.ApplicableFees.AddRangeAsync(applicableFees);
-                await _context.SaveChangesAsync();
-            }
-            return new OkObjectResult(new { message = "Applicable fees applied successfully", IsSucceed = true });
+
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(new { message = "Applicable fees applied successfully", IsSucceed = true, created, skipped });
         }
 
-
-        public async Task<IActionResult> GetAllApplicableFees()
+        private async Task<string?> FindProblemAsync(ApplicableFeeDto dto, FeeScope scope, Guid? ignoring = null)
         {
-            var applicableFees = await _context.ApplicableFees.Include(af => af.Student).Include(af => af.FeeType).Select(af => new Model.DTOs.ApplicableFeeWithDetailsDto
-            {
-                AfId = af.AfId,
-                StudentName = af.Student.User.FullName,
-                FeeTypeName = af.FeeType.Name,
-                Amount = af.FeeType.Amount,
-                CreatedAt = af.CreatedAt,
-                Status=af.Status,
-            }).ToListAsync();
+            var student = await _access.Students(scope).AsNoTracking()
+                .Where(s => s.StudentId == dto.StudentId)
+                .Select(s => new { s.IsActive })
+                .FirstOrDefaultAsync();
+            if (student == null) return "Student not found in your department.";
+            if (!student.IsActive) return "Student is inactive.";
+
+            var feeType = await _context.FeeTypes.AsNoTracking().FirstOrDefaultAsync(f => f.FeeTypeId == dto.FeeTypeId);
+            if (feeType == null) return "Fee type not found.";
+            if (!feeType.IsActive) return "Fee type is inactive.";
+
+            var duplicate = await _context.ApplicableFees.AnyAsync(af =>
+                af.StudentId == dto.StudentId && af.FeeTypeId == dto.FeeTypeId && af.AfId != ignoring);
+            return duplicate ? "This fee is already applied to the student." : null;
+        }
+
+        public async Task<IActionResult> GetAllApplicableFees(FeeScope scope)
+        {
+            var applicableFees = await InScope(scope).Select(ToDetails).ToListAsync();
+            await SetStatusAsync(applicableFees);
             return new OkObjectResult(applicableFees);
         }
 
-        public async Task<IActionResult> GetApplicableFeesById(Guid id)
+        public async Task<IActionResult> GetApplicableFeesById(Guid id, FeeScope scope)
         {
-            var applicableFee = await _context.ApplicableFees.Include(af => af.Student).Include(af => af.FeeType).Where(af => af.AfId == id).Select(af => new Model.DTOs.ApplicableFeeWithDetailsDto
-            {
-                AfId = af.AfId,
-                StudentName = af.Student.User.FullName,
-                FeeTypeName = af.FeeType.Name,
-                Amount = af.FeeType.Amount,
-                AcademicTerm=af.FeeType.AcademicTerm,
-                Status = af.Status,
-                CreatedAt = af.CreatedAt
-            }).FirstOrDefaultAsync();
-            if (applicableFee == null)
-            {
+            var applicableFees = await InScope(scope).Where(af => af.AfId == id).Select(ToDetails).ToListAsync();
+            if (applicableFees.Count == 0)
                 return new NotFoundObjectResult(new { message = "Applicable fee not found" });
-            }
-            return new OkObjectResult(applicableFee);
 
-
-
+            await SetStatusAsync(applicableFees);
+            return new OkObjectResult(applicableFees[0]);
         }
 
-        public async Task<IActionResult> GetApplicableFeesByStudentId(Guid studentId)
+        public async Task<IActionResult> GetApplicableFeesByStudentId(Guid studentId, FeeScope scope)
         {
-            var applicableFees = await _context.ApplicableFees.Include(af => af.Student).Include(af => af.FeeType).Where(af => af.StudentId == studentId).Select(af => new Model.DTOs.ApplicableFeeWithDetailsDto
-            {
-                AfId = af.AfId,
-                StudentName = af.Student.User.FullName,
-                FeeTypeName = af.FeeType.Name,
-                AcademicTerm=af.FeeType.AcademicTerm,
-                Amount = af.FeeType.Amount,
-                Status = af.Status,
-                CreatedAt = af.CreatedAt
-            }).ToListAsync();
-            if (applicableFees == null || applicableFees.Count == 0)
-            {
-                return new NotFoundObjectResult(new { message = "No applicable fees found for the student" });
-            }
+            var applicableFees = await InScope(scope).Where(af => af.StudentId == studentId).Select(ToDetails).ToListAsync();
+            await SetStatusAsync(applicableFees);
             return new OkObjectResult(applicableFees);
         }
 
-        public async Task<IActionResult> UpdateApplicableFee(Guid id, Model.DTOs.ApplicableFeeDto applicableFeeDto)
+        /// <summary>Fees that can still go on a new invoice. Monthly fees stay listed after being paid.</summary>
+        public async Task<IActionResult> GetBillableFeesForStudent(Guid studentId, FeeScope scope)
         {
-            var existingApplicableFee = await _context.ApplicableFees.FindAsync(id);
-            if (existingApplicableFee == null)
-            {
+            var billedOnce = _context.Invoices.Where(i => i.StudentId == studentId && !i.IsVoided);
+            var applicableFees = await InScope(scope)
+                .Where(af => af.StudentId == studentId && af.FeeType!.IsActive)
+                .Where(af => af.FeeType!.Per != "one-time" || !billedOnce.Any(i => i.FeeTypeId == af.FeeTypeId))
+                .Select(ToDetails)
+                .ToListAsync();
+            await SetStatusAsync(applicableFees);
+            return new OkObjectResult(applicableFees);
+        }
+
+        public async Task<IActionResult> UpdateApplicableFee(Guid id, ApplicableFeeDto applicableFeeDto, FeeScope scope)
+        {
+            var existing = await InScope(scope).AsTracking().FirstOrDefaultAsync(af => af.AfId == id);
+            if (existing == null)
                 return new NotFoundObjectResult(new { message = "Applicable fee not found" });
-            }
-            // Check if the new combination of StudentId and FeeTypeId already exists
-            var duplicateApplicableFee = await _context.ApplicableFees.FirstOrDefaultAsync(af => af.StudentId == applicableFeeDto.StudentId && af.FeeTypeId == applicableFeeDto.FeeTypeId && af.AfId != id);
-            if (duplicateApplicableFee != null)
-            {
-                return new BadRequestObjectResult(new { message = "Another applicable fee with the same StudentId and FeeTypeId already exists" });
-            }
-            existingApplicableFee.StudentId = applicableFeeDto.StudentId;
-            existingApplicableFee.FeeTypeId = applicableFeeDto.FeeTypeId;
-            existingApplicableFee.Status = FeeStatus.Pending; // Reset status to Pending when updating
-            _context.ApplicableFees.Update(existingApplicableFee);
+            if (await IsBilledAsync(existing))
+                return new BadRequestObjectResult(new { message = "This fee has invoices. Cancel them before changing it." });
+
+            var problem = await FindProblemAsync(applicableFeeDto, scope, id);
+            if (problem != null)
+                return new BadRequestObjectResult(new { message = problem });
+
+            existing.StudentId = applicableFeeDto.StudentId;
+            existing.FeeTypeId = applicableFeeDto.FeeTypeId;
             await _context.SaveChangesAsync();
             return new OkObjectResult(new { message = "Applicable fee updated successfully", IsSucceed = true });
-
         }
 
+        public async Task<IActionResult> DeleteApplicableFee(Guid id, FeeScope scope)
+        {
+            var existing = await InScope(scope).AsTracking().FirstOrDefaultAsync(af => af.AfId == id);
+            if (existing == null)
+                return new NotFoundObjectResult(new { message = "Applicable fee not found" });
+            if (await IsBilledAsync(existing))
+                return new BadRequestObjectResult(new { message = "This fee has invoices. Cancel them before removing it." });
 
+            _context.ApplicableFees.Remove(existing);
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(new { message = "Applicable fee removed", IsSucceed = true });
+        }
 
         // by section id
-        public async Task<IActionResult> GetbulkApplicableFeeBySectionId(Guid sectionId)
+        public async Task<IActionResult> GetbulkApplicableFeeBySectionId(Guid sectionId, FeeScope scope)
         {
-            var applicableFees = await _context.ApplicableFees
-                .Include(af => af.Student)
-                .Include(af => af.FeeType)
-                .Include(af => af.Student.StudentEnrollments) // Include StudentEnrollments to access SectionId
-                .Where(af => af.Student.StudentEnrollments.Any(se => se.SectionId == sectionId))
-                .Select(af => new Model.DTOs.ApplicableFeeWithDetailsDto
-                {
-                    AfId = af.AfId,
-                    StudentName = af.Student.User.FullName,
-                    FeeTypeName = af.FeeType.Name,
-                    AcademicTerm = af.FeeType.AcademicTerm,
-                    Amount = af.FeeType.Amount,
-                    Status = af.Status,
-                    CreatedAt = af.CreatedAt
-                })
+            var applicableFees = await InScope(scope)
+                .Where(af => af.Student!.StudentEnrollments.Any(se => se.SectionId == sectionId && se.IsActive))
+                .Select(ToDetails)
                 .ToListAsync();
-            if (applicableFees == null || applicableFees.Count == 0)
-            {
-                return new NotFoundObjectResult(new { message = "No applicable fees found for the section" });
-            }
+            await SetStatusAsync(applicableFees);
             return new OkObjectResult(applicableFees);
         }
 
+        private Task<bool> IsBilledAsync(ApplicableFee fee) =>
+            _context.Invoices.AnyAsync(i => i.StudentId == fee.StudentId && i.FeeTypeId == fee.FeeTypeId && !i.IsVoided);
+
+        private async Task SetStatusAsync(List<ApplicableFeeWithDetailsDto> fees)
+        {
+            var studentIds = fees.Select(f => f.StudentId).Distinct().ToList();
+            var invoices = await _context.Invoices.AsNoTracking()
+                .Where(i => !i.IsVoided && studentIds.Contains(i.StudentId))
+                .Select(i => new { i.StudentId, i.FeeTypeId, Net = i.Amount + i.LateFee - i.Discount, i.AmountPaid, i.DueDate })
+                .ToListAsync();
+            var statuses = invoices.ToLookup(
+                i => (i.StudentId, i.FeeTypeId),
+                i => FeeRules.InvoiceStatus(i.Net, i.AmountPaid, i.DueDate, false));
+
+            foreach (var fee in fees)
+                fee.Status = FeeRules.ApplicableStatus(statuses[(fee.StudentId, fee.FeeTypeId)].ToList()).ToString();
+        }
     }
 }

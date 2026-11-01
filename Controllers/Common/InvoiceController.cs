@@ -1,112 +1,83 @@
-﻿using Auth.Model.DTOs;
-using Auth.Model.Entities;
+﻿using System.Security.Claims;
+using Auth.Model.DTOs;
 using Auth.Services;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Auth.Controllers.Common
 {
 
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = FeeRules.Staff)]
     public class InvoiceController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IInvoiceService _invoiceService;
-        private readonly TeachingAccessService _access;
-        public InvoiceController(
-            IInvoiceService invoiceService,
-            UserManager<ApplicationUser> userManager,
-            TeachingAccessService access)
+        private readonly IApplicableFeeService _applicableFees;
+        private readonly FeeAccessService _access;
+
+        public InvoiceController(IInvoiceService invoiceService, IApplicableFeeService applicableFees, FeeAccessService access)
         {
             _invoiceService = invoiceService;
-            _userManager = userManager;
+            _applicableFees = applicableFees;
             _access = access;
         }
 
+        private string UserId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+
+        [HttpGet]
+        public async Task<IActionResult> ListInvoices(
+            [FromQuery] string? status,
+            [FromQuery] string? month,
+            [FromQuery] string? year,
+            [FromQuery] Guid? sectionId,
+            [FromQuery] string? search,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 25) =>
+            await _invoiceService.ListInvoices(await _access.GetScopeAsync(User), status, month, year, sectionId, search, page, pageSize);
 
         [HttpPost("generate")]
         public async Task<IActionResult> GenerateInvoice([FromBody] GenerateInvoiceRequest request)
         {
-            if (request == null || request.Fees == null || !request.Fees.Any())
-            {
-                return BadRequest("No applicable fees provided.");
-            }
+            if (request.Fees.Count == 0)
+                return BadRequest(new { message = "No applicable fees provided." });
+            if (!Guid.TryParse(UserId, out var userId))
+                return Unauthorized(new { message = "Invalid or missing user identity." });
 
-            var userIdValue = _userManager.GetUserId(User);
-
-            if (!Guid.TryParse(userIdValue, out var userId))
-            {
-                return Unauthorized("Invalid or missing user identity.");
-            }
-
-            var result = await _invoiceService.GenerateInvoice(
-                request.Fees,
-                request.Month,
-                request.Year,
-                request.DueDate,
-                userId
-            );
-
-            return result;
+            return await _invoiceService.GenerateInvoice(request, userId, await _access.GetScopeAsync(User));
         }
 
-        [HttpPost("generate/bulk")] 
-
+        [HttpPost("generate/bulk")]
         public async Task<IActionResult> GenerateBulkInvoice([FromBody] GenerateInvoiceRequest request)
         {
-            if (request == null || request.Fees == null || !request.Fees.Any())
-            {
-                return BadRequest("No applicable fees provided.");
-            }
-            var userIdValue = _userManager.GetUserId(User);
-            if (!Guid.TryParse(userIdValue, out var userId))
-            {
-                return Unauthorized("Invalid or missing user identity.");
-            }
-            var result = await _invoiceService.GenerateBulkInvoice(
-                request.Fees,
-                request.Month,
-                request.Year,
-                request.DueDate,
-                userId
-            );
-            return result;
+            if (request.Fees.Count == 0)
+                return BadRequest(new { message = "No applicable fees provided." });
+            if (!Guid.TryParse(UserId, out var userId))
+                return Unauthorized(new { message = "Invalid or missing user identity." });
+
+            return await _invoiceService.GenerateBulkInvoice(request, userId, await _access.GetScopeAsync(User));
         }
 
+        [HttpPost("{id}/void")]
+        public async Task<IActionResult> VoidInvoice(Guid id, [FromBody] ReasonDto dto) =>
+            await _invoiceService.VoidInvoice(id, dto.Reason, UserId, await _access.GetScopeAsync(User));
+
+        [HttpGet("{id}/adjustments")]
+        public async Task<IActionResult> GetAdjustments(Guid id) =>
+            await _invoiceService.GetAdjustments(id, await _access.GetScopeAsync(User));
+
+        [HttpPost("{id}/adjustments")]
+        public async Task<IActionResult> AddAdjustment(Guid id, [FromBody] AddAdjustmentDto dto) =>
+            await _invoiceService.AddAdjustment(id, dto, UserId, await _access.GetScopeAsync(User));
+
+        [HttpPost("{id}/adjustments/{adjustmentId}/remove")]
+        public async Task<IActionResult> RemoveAdjustment(Guid id, Guid adjustmentId, [FromBody] ReasonDto dto) =>
+            await _invoiceService.RemoveAdjustment(id, adjustmentId, dto.Reason, UserId, await _access.GetScopeAsync(User));
+
+        /// <summary>The student's fees that can go on a new invoice.</summary>
         [HttpGet("pending/{studentId}")]
-        public async Task<IActionResult> GetPendingFees(Guid studentId)
-        {
-            if (!await CanReadStudentAsync(studentId))
-                return Forbid();
-
-            var result = await _invoiceService.GetPendingFeeForStudent(studentId);
-            return result;
-        }
-
-        /// <summary>A student's challans (month, due date, amounts). Students may only read their own.</summary>
-        [HttpGet("history/{studentId}")]
-        public async Task<IActionResult> GetInvoiceHistory(Guid studentId)
-        {
-            if (!await CanReadStudentAsync(studentId))
-                return Forbid();
-
-            var result = await _invoiceService.GetInvoiceForStudent(studentId);
-            return result;
-        }
-
-        private async Task<bool> CanReadStudentAsync(Guid studentId)
-        {
-            if (User.IsInRole("Admin") || User.IsInRole("HOD") || User.IsInRole("Teacher"))
-                return true;
-
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
-            return await _access.StudentIdForUserAsync(userId) == studentId;
-        }
+        public async Task<IActionResult> GetPendingFees(Guid studentId) =>
+            await _applicableFees.GetBillableFeesForStudent(studentId, await _access.GetScopeAsync(User));
     }
 }

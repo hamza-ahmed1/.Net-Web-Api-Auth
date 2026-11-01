@@ -22,6 +22,8 @@ namespace Auth.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence("InvoiceNumbers");
+
             modelBuilder.Entity("Auth.Model.Entities.Announcement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -166,10 +168,6 @@ namespace Auth.Migrations
                     b.Property<Guid>("FeeTypeId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
@@ -177,7 +175,8 @@ namespace Auth.Migrations
 
                     b.HasIndex("FeeTypeId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "FeeTypeId")
+                        .IsUnique();
 
                     b.ToTable("ApplicableFees");
                 });
@@ -408,6 +407,43 @@ namespace Auth.Migrations
                     b.ToTable("Departments");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.EmailConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EncryptedAppPassword")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SenderEmail")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SmtpPort")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SmtpServer")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EmailConfigurations");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.Exam", b =>
                 {
                     b.Property<Guid>("ExamID")
@@ -506,9 +542,13 @@ namespace Auth.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("FeeCategoryId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("FeeCategories");
                 });
@@ -521,7 +561,8 @@ namespace Auth.Migrations
 
                     b.Property<string>("AcademicTerm")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(10,2)");
@@ -531,7 +572,8 @@ namespace Auth.Migrations
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(3)
+                        .HasColumnType("nvarchar(3)");
 
                     b.Property<Guid>("FeeCategoryId")
                         .HasColumnType("uniqueidentifier");
@@ -541,15 +583,18 @@ namespace Auth.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Per")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("FeeTypeId");
 
-                    b.HasIndex("FeeCategoryId");
+                    b.HasIndex("FeeCategoryId", "Name")
+                        .IsUnique();
 
                     b.ToTable("FeeTypes");
                 });
@@ -573,6 +618,9 @@ namespace Auth.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("Discount")
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
 
@@ -585,11 +633,25 @@ namespace Auth.Migrations
 
                     b.Property<string>("InvoiceNum")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("IsVoided")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("LateFee")
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Month")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
@@ -597,17 +659,79 @@ namespace Auth.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VoidedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Year")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("FeeTypeId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("InvoiceNum")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId", "FeeTypeId", "Month", "Year")
+                        .IsUnique()
+                        .HasFilter("[IsVoided] = 0");
 
                     b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.InvoiceAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsRemoved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("RecordedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RemoveReason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("RemovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RemovedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoiceAdjustments");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.RefreshToken", b =>
@@ -823,19 +947,41 @@ namespace Auth.Migrations
                     b.Property<Guid>("InvoiceId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
                     b.Property<int>("Mode")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("PaidAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Reason")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("RecordedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ReversesTransactionId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("TransactionReference")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("TransactionId");
 
                     b.HasIndex("InvoiceId");
+
+                    b.HasIndex("ReversesTransactionId")
+                        .IsUnique()
+                        .HasFilter("[ReversesTransactionId] IS NOT NULL");
+
+                    b.HasIndex("TransactionReference")
+                        .IsUnique()
+                        .HasFilter("[TransactionReference] <> ''");
 
                     b.ToTable("TransactionHistories");
                 });
@@ -1208,6 +1354,17 @@ namespace Auth.Migrations
                     b.Navigation("feeType");
                 });
 
+            modelBuilder.Entity("Auth.Model.Entities.InvoiceAdjustment", b =>
+                {
+                    b.HasOne("Auth.Model.Entities.Invoice", "Invoice")
+                        .WithMany("Adjustments")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
+                });
+
             modelBuilder.Entity("Auth.Model.Entities.RefreshToken", b =>
                 {
                     b.HasOne("Auth.Model.Entities.ApplicationUser", "User")
@@ -1302,7 +1459,7 @@ namespace Auth.Migrations
                     b.HasOne("Auth.Model.Entities.Invoice", "Invoice")
                         .WithMany()
                         .HasForeignKey("InvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Invoice");
@@ -1421,6 +1578,11 @@ namespace Auth.Migrations
             modelBuilder.Entity("Auth.Model.Entities.FeeType", b =>
                 {
                     b.Navigation("ApplicableFees");
+                });
+
+            modelBuilder.Entity("Auth.Model.Entities.Invoice", b =>
+                {
+                    b.Navigation("Adjustments");
                 });
 
             modelBuilder.Entity("Auth.Model.Entities.Section", b =>

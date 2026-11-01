@@ -14,29 +14,22 @@ namespace Auth.Services
     {
 
 
-        private readonly IConfiguration _configuration;
-        public EmailService(IConfiguration configuration)
+        private readonly IEmailSettingsService _settings;
+        public EmailService(IEmailSettingsService settings)
         {
-            _configuration = configuration;
+            _settings = settings;
         }
 
         public async Task SendEmailAsync(string recipientEmail, string subject, string htmlMessage)
         {
-            var smtpServer = _configuration["EmailSettings:SmtpServer"];
-            var smtpPort = int.Parse(_configuration["EmailSettings:SmtpPort"] ?? "587");
-            var senderEmail = _configuration["EmailSettings:SenderEmail"];
-            var senderName = _configuration["EmailSettings:SenderName"];
-            var appPassword = _configuration["EmailSettings:AppPassword"];
-            if(senderEmail==null)
-            {
-                throw new InvalidOperationException("Sender email is required.");
-            }
+            // Managed from Email Setup in the Admin Panel (stored encrypted in the database)
+            var settings = await _settings.GetForSendingAsync();
             if (recipientEmail == null)
             {
                 throw new InvalidOperationException("Recipient email is required.");
             }
             var emailMessage = new MimeMessage();
-            emailMessage.From.Add(new MailboxAddress(senderName, senderEmail));
+            emailMessage.From.Add(new MailboxAddress(settings.SenderName, settings.SenderEmail));
             emailMessage.To.Add(new MailboxAddress("", recipientEmail));
             emailMessage.Subject = subject;
 
@@ -47,8 +40,11 @@ namespace Auth.Services
             {
                 try
                 {
-                    await client.ConnectAsync(smtpServer, smtpPort, SecureSocketOptions.StartTls);
-                    await client.AuthenticateAsync(senderEmail, appPassword);
+                    client.Timeout = 20000;
+                    // Port 465 is TLS from the first byte; anything else must upgrade with STARTTLS, never plain text
+                    var security = settings.SmtpPort == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+                    await client.ConnectAsync(settings.SmtpServer, settings.SmtpPort, security);
+                    await client.AuthenticateAsync(settings.SenderEmail, settings.AppPassword);
                     await client.SendAsync(emailMessage);
                 }
                 catch (Exception ex)

@@ -8,7 +8,7 @@ namespace Auth.Controllers.Common
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     public class EmailController : ControllerBase
     {
         private readonly IEmailService _emailService;

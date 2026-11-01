@@ -4,6 +4,7 @@ using Auth.Model.Entities;
 using Auth.Services;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -96,6 +97,19 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IApplicableFeeService, ApplicableFeeService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailSettingsService, EmailSettingsService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<FeeAccessService>();
+builder.Services.AddScoped<IFeeReportService, FeeReportService>();
+
+// Encrypts secrets stored in the database. In containers set DataProtection:KeysPath to a persistent
+// volume; if the keys are ever lost the admin simply re-enters the SMTP password.
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("TcfCampus");
+var dataProtectionKeys = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeys))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeys));
+}
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 builder.Services.AddScoped<TeachingAccessService>();
@@ -175,6 +189,15 @@ using (var scope = app.Services.CreateScope())
             await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
         }
     }
+    try
+    {
+        await scope.ServiceProvider.GetRequiredService<IEmailSettingsService>().EnsureSeededAsync();
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while seeding email settings.");
+    }
+
     // Seed default data (roles, admin user). Values can be configured via appsettings or env variables:
     // Admin:UserName, Admin:Password, Admin:Role, Admin:Seed (true/false)
     try

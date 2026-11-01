@@ -13,11 +13,10 @@ namespace Auth.Model.Entities
         public Guid FeeTypeId { get; set; }
         public FeeType? FeeType { get; set; }
 
-        public FeeStatus Status { get; set; } = FeeStatus.Pending;
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
+    /// <summary>Worked out from the student's invoices each time it is read, so it cannot go stale.</summary>
     public enum FeeStatus
     {
         Pending,

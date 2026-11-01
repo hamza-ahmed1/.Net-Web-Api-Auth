@@ -18,17 +18,32 @@ namespace Auth.Services
 
         public async Task<IActionResult> CreateCategory(FeeCategoryDto cat)
         {
-            var existingCategory = await _context.FeeCategories.FirstOrDefaultAsync(c => c.Name == cat.categoryName);
-            if (existingCategory != null)
+            var name = cat.categoryName.Trim();
+            if (await _context.FeeCategories.AnyAsync(c => c.Name == name))
             {
-                return new BadRequestObjectResult("Category already exists");
+                return new BadRequestObjectResult(new { message = "Category already exists" });
             }
-            var category = new Model.Entities.FeeCategory
-            {
-                Name = cat.categoryName
-            };
 
-            await _context.FeeCategories.AddAsync(category);
+            await _context.FeeCategories.AddAsync(new Model.Entities.FeeCategory { Name = name });
+            await _context.SaveChangesAsync();
+            return new OkObjectResult(cat);
+        }
+
+        public async Task<IActionResult> UpdateCategory(Guid categoryId, FeeCategoryDto cat)
+        {
+            var category = await _context.FeeCategories.FindAsync(categoryId);
+            if (category == null)
+            {
+                return new NotFoundObjectResult(new { message = "Category not found" });
+            }
+
+            var name = cat.categoryName.Trim();
+            if (await _context.FeeCategories.AnyAsync(c => c.Name == name && c.FeeCategoryId != categoryId))
+            {
+                return new BadRequestObjectResult(new { message = "Category already exists" });
+            }
+
+            category.Name = name;
             await _context.SaveChangesAsync();
             return new OkObjectResult(cat);
         }
@@ -40,7 +55,7 @@ namespace Auth.Services
                     categoryId = c.FeeCategoryId,
                     categoryName = c.Name
                 }).ToListAsync();
-    
+
             return new OkObjectResult(categories);
         }
 
@@ -49,9 +64,9 @@ namespace Auth.Services
             var category = await _context.FeeCategories.FindAsync(categoryId);
             if (category == null)
             {
-                return new NotFoundObjectResult("Category not found");
+                return new NotFoundObjectResult(new { message = "Category not found" });
             }
-            return new OkObjectResult(category);
+            return new OkObjectResult(new FeeCategoryDetailsDto { categoryId = category.FeeCategoryId, categoryName = category.Name });
         }
     }
 }
