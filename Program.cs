@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -126,10 +127,20 @@ builder.Services.AddHostedService<NotificationDispatcher>();
 
 
 
+// Websites allowed to call the API (with the refresh-token cookie). Exact origins plus patterns, both from
+// configuration, so a new frontend domain can be added in Azure without a code change
+// (e.g. app setting Cors__AllowedOrigins__1 = https://your-site.example).
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
+var allowedOriginPatterns = (builder.Configuration.GetSection("Cors:AllowedOriginPatterns").Get<string[]>() ?? Array.Empty<string>())
+    .Select(pattern => new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100)))
+    .ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("SpaPolicy", policy =>
-        policy.WithOrigins("http://localhost:3000")
+        policy.SetIsOriginAllowed(origin =>
+                  allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) ||
+                  allowedOriginPatterns.Any(pattern => pattern.IsMatch(origin)))
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
